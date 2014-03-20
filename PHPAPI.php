@@ -1,9 +1,9 @@
 <?php
 
-namespace \JamesSwift\PHPAPI;
+namespace JamesSwift\PHPAPI;
 
 class Exception extends \Exception {
-	
+	//Nothing to do here yet
 }
 
 class PHPAPI {
@@ -28,7 +28,7 @@ class PHPAPI {
 	
 	public function loadConfigFromJSON($config){
 		//Check JSON file exists and has right extension
-		if (is_file($config) && str_to_lower(substr($config, -5))===".json"){
+		if (is_file($config) && strtolower(substr($config, -5))===".json"){
 			//Decode JSON and parse it
 			$this->config=json_decode(file_get_contents($config), true);
 			return true;
@@ -44,16 +44,33 @@ class PHPAPI {
 		
 		//Check Methods array
 		if (!isset($view['allowedMethods']) || !is_array($view['allowedMethods']) || sizeof($view['allowedMethods'])<1 ) {
-			throw new Exception("The array passed to registerView must contain an non-empty array named 'allowedMethods'.","BadMethodsArray");
+			throw new Exception("The array passed to registerView must contain an non-empty array named 'allowedMethods'.","BadMethodsArrayDefinition");
 		}
-		foreach($view['allowedMethods'] as $method){
+		foreach($view['allowedMethods'] as &$method){
+			$method=strtoupper($method);
 			if (in_array($method, $this->allowedMethods)!==true){
 				throw new Exception("Unknown method specified in the 'allowedMethods' array.","BadMethodDefinition");
 			}
 		}
 		
+		//Check request is string
+		if (!is_string($view['request']) || strlen($view['request'])<1) {
+			throw new Exception("The array passed to registerView must contain an non-empty string named 'request'.","BadRequestDefinition");
+		}
 		
-		$this->config[]=array(
+		//Check call is string
+		if (!is_string($view['call']) || strlen($view['call'])<1) {
+			throw new Exception("The array passed to registerView must contain an non-empty string named 'call'.","BadCallDefinition");
+		}
+		
+		//Check require exists
+		if (isset($view['require'])){
+			if (!is_string($view['require']) || !is_file($view['require'])) {
+				throw new Exception("The 'require' path you specified doesn't exist.","BadRequireDefinition");
+			}
+		}
+		
+		$this->views[]=array(
 			"allowedMethods"=>$view['allowedMethods'],
 			"request"=>$view['request'],
 			"call"=>$view['call'],

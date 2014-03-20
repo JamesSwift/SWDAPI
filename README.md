@@ -4,12 +4,12 @@ PHPAPI
 </h1>
 
 This project is still in development and is not complete enough to even function as yet. I'm creating my own API framework 
-rather than using someone elses because:
+rather than using someone els0e's because:
 
--What's the point of writing an API and only being able to call it over HTTP?
--I want to be able to call the API from within PHP with as little overhead as possible
--I want a simple framework
--I want the power of reg-ex for matching paths
+- What's the point of writing an API and only being able to call it over HTTP?
+- I want to be able to call the API from within PHP with as little overhead as possible
+- I want a simple framework
+- I want the power of reg-ex for matching paths
 
 ## License
 

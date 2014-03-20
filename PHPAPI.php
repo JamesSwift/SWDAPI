@@ -40,13 +40,21 @@ class PHPAPI {
 	
 	public function request($method, $URI, $headers = null, $body = null){
 		//Try to find the right view
-		$view=$this->findViewByURI($URI);
-		var_dump($view);
+		$view=$this->findView($method, $URI);
+		
+		//Check we found a view
+		if ($view===null){
+			return new Response(404);
+		}
+		
+		//Carry on
+		return $view;
+
 	}
 	
-	public function findViewByURI($URI){
+	public function findView($method, $URI){
 		foreach ($this->views as $view){
-			if (preg_match($view['pattern'], $URI)==true){
+			if (preg_match($view['pattern'], $URI)===1 ){ //&& in_array(strtoupper($method), $view['allowedMethods'])==true
 				return $view;
 			}
 		}
@@ -112,14 +120,14 @@ class PHPAPI {
  class View {
 	 public $method;
 	 public $URI;
-	 public $Headers = array();
-	 public $Body;
+	 public $headers = array();
+	 public $body;
 	 
-	public function __construct($method, $URI, $Headers = null, $Body = null) {
+	public function __construct($method, $URI, $headers = null, $body = null) {
 		$this->method = $method;
 		$this->$URI = $URI;
-		$this->$Headers = $Headers;
-		$this->$Body = $Body;
+		$this->$headers = $headers;
+		$this->$body = $nody;
 	}
  }
  
@@ -128,7 +136,7 @@ class PHPAPI {
 	 public $headers;
 	 public $body;
 	 
-	 public function __construct($status=200, $body=array(), $headers=array()) {
+	 public function __construct($status=200, $body=null, $headers=null) {
 		 $this->status=$status;
 		 $this->body=$body;
 		 $headers->headers=$headers;

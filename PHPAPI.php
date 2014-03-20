@@ -2,8 +2,14 @@
 
 namespace \JamesSwift\PHPAPI;
 
+class Exception extends \Exception {
+	
+}
+
 class PHPAPI {
-	private $config;
+	private $config=array();
+	private $views=array();
+	private $allowedMethods=array("GET","POST","PUT","DELETE");
 	
 	public function __construct($config){
 		$this->loadConfig($config);
@@ -29,19 +35,54 @@ class PHPAPI {
 		}
 		return false;
 	}
+	
+	public function request($method, $URI, $headers = null, $body = null){
+		
+	}
+	
+	public function registerView($view){
+		
+		//Check Methods array
+		if (!isset($view['allowedMethods']) || !is_array($view['allowedMethods']) || sizeof($view['allowedMethods'])<1 ) {
+			throw new Exception("The array passed to registerView must contain an non-empty array named 'allowedMethods'.","BadMethodsArray");
+		}
+		foreach($view['allowedMethods'] as $method){
+			if (in_array($method, $this->allowedMethods)!==true){
+				throw new Exception("Unknown method specified in the 'allowedMethods' array.","BadMethodDefinition");
+			}
+		}
+		
+		
+		$this->config[]=array(
+			"allowedMethods"=>$view['allowedMethods'],
+			"request"=>$view['request'],
+			"call"=>$view['call'],
+			"require"=>$view['require']
+		);
+	}
+	
+	public function registerViews($array){
+		if (!is_array($array) || sizeof($array)<1){
+			throw new Exception("Method registerView requires a non-empty array.", "InvalidVariableType"); 
+		}
+		foreach($array as $view){
+			$this->registerView($view);
+		}
+		
+	}
 }
 
  class View {
 	 public $method;
-	 public $requestURI;
-	 public $requestHeaders = array();
-	 public $requestBody;
+	 public $URI;
+	 public $Headers = array();
+	 public $Body;
 	 
-	public function __construct($method, $requestURI, $requestHeaders = null, $requestBody = null) {
+	public function __construct($method, $URI, $Headers = null, $Body = null) {
 		$this->method = $method;
-		$this->$requestURI = $requestURI;
-		$this->$requestHeaders = $requestHeaders;
-		$this->$requestBody = $requestBody;
+		$this->$URI = $URI;
+		$this->$Headers = $Headers;
+		$this->$Body = $Body;
 	}
  }
  

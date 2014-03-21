@@ -11,6 +11,13 @@ rather than using someone else's because:
 - I want a simple framework
 - I want the power of reg-ex for matching paths
 
+##Get The Code
+To get a copy of the code, at your terminal type:
+
+    git clone git://github.com/James-Swift/PHPAPI.git
+    git submodule init
+    git submodule update
+
 ## License
 
 <span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">JamesSwift\PHPAPI</span> by 

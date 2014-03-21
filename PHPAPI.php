@@ -7,30 +7,31 @@ class Exception extends \Exception {
 }
 
 class PHPAPI {
-	private $config;
-	private $views;
-	private $allowedMethods=array("GET","POST","PUT","DELETE");
 	
-	public function __construct($config=null){
-		$this->loadConfig($config);
+	protected $_config;
+	protected $_views;
+	protected $_allowedMethods=array("GET","POST","PUT","DELETE");
+	
+	public function __construct($_config=null){
+		$this->loadConfig($_config);
 	}
 	
-	public function loadConfig($config){
+	public function loadConfig($_config){
 		//If config is an assoc array, just load it
-		if (is_array($config)){
-			$this->config = $config;
+		if (is_array($_config)){
+			$this->config = $_config;
 			return true;
 		//If config is a path to a json file, parse and load it
-		} else if ($config!==null){
-			return $this->loadJSON($config);
+		} else if ($_config!==null){
+			return $this->loadJSON($_config);
 		}	
 	}
 	
-	public function loadJSON($config){
+	public function loadJSON($_config){
 		//Check JSON file exists and has right extension
-		if (is_file($config) && strtolower(substr($config, -5))===".json"){
+		if (is_file($_config) && strtolower(substr($_config, -5))===".json"){
 			//Decode JSON and parse it
-			$file=json_decode(file_get_contents($config), true);
+			$file=json_decode(file_get_contents($_config), true);
 			$this->registerViews($file['views']);
 			$this->config=$file['config'];
 			return true;
@@ -127,7 +128,7 @@ class PHPAPI {
 		$this->method = $method;
 		$this->$URI = $URI;
 		$this->$headers = $headers;
-		$this->$body = $nody;
+		$this->$body = $body;
 	}
  }
  

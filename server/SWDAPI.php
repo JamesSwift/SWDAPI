@@ -1,12 +1,12 @@
 <?php
 
-namespace JamesSwift\PHPAPI;
+namespace JamesSwift\SWDAPI;
 
 class Exception extends \Exception {
 	//Nothing to do here yet
 }
 
-class PHPAPI {
+class SWDAPI {
 	
 	protected $_config;
 	protected $_views;

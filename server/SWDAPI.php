@@ -2,93 +2,138 @@
 
 namespace JamesSwift\SWDAPI;
 
-class Exception extends \Exception {
-	//Nothing to do here yet
-}
-
-require "../submodules/PHPBootstrap/PHPBootstrap.php";
+require __DIR__."/../submodules/PHPBootstrap/PHPBootstrap.php";
 
 class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
-	protected $_config;
-	protected $_methods;
+	protected $settings;
+	protected $methods;
 	
 	//Define this method:
 	public function loadDefaultConfig(){
-		$this->_config = [];
-		$this->_methods = [];
+		$this->settings = [];
+		$this->methods = [];
 	}
 	
 	protected function _sanitizeConfig($config){
-		$this->registerMethods($config['methods']);
-		$this->config=$config['config'];
+		
+		$newConfig=[];
+		
+		//Sanitize methods (if defined)
+		if (is_array($config['methods']) && sizeof($config['methods'])>0){
+			$newConfig['methods'] = $this->_sanitizeMethods($config['methods']);
+		}
+		
+		
+		//Sanitize settings
+		
+		//none yet
+		
+		return $newConfig;
+		
 	}
 	
 
-	public function request($method, $data, $authorizedUser=null){
-		//Try to find the right method
-		$result = $this->findMethod($method);
-		
+	public function request($methodID, $data=null, $authorizedUser=null){
+
 		//Check we found a method
-		if ($result===null){
+		if (!isset($this->methods[$methodID])){
 			return new Response(404);
 		}
 		
-		//Carry on
-		if (isset($result['require']) && is_string($result['require'])){
-			require_once($result['require']);
+		//Shorthand
+		$method = $this->methods[$methodID];
+		
+		//Require method src file
+		if (isset($method['require']) && is_string($method['require'])){
+			require_once($method['require']);
+		}
+		
+		//Attempt to call method
+		try {
+			
+			return call_user_func($method['call'], $data, $authorizedUser);
+			
+			
+		//Catch any unhanlded exceptions and return a 500 message
+		} catch (\Exception $e){
+			return new Response(500, $e->getMessage());
 		}
 
-	}
-	
-	public function findMethod($method){
-		if (isset($this->_methods[$method])){
-			return $this->_methods[$method];
-		}
-		return null;
 	}
 	
 	public function getMethods(){
-		return $this->_methods;
+		return $this->methods;
 	}
 
-	public function registerMethod($method){
+	protected function _sanitizeMethod($id, $method){
 		
 		//Check if method already exists
-		if (!isset($method['id']) || isset($this->_methods[$method['id']])){
-			throw new Exception("The array passed to registerMethod must contain a unique non-empty string named 'id'.");
+		if (!isset($id) || isset($this->methods[$id])){
+			throw new \Exception("A method id definition must be a unique non-empty string.");
 		}
 		
 		//Check call is string
 		if (!is_string($method['call']) || strlen($method['call'])<1) {
-			throw new Exception("The array passed to registerMethod must contain an non-empty string named 'call'.");
+			throw new \Exception("A method definition must contain an non-empty string named 'call'.");
 		}
 		
 		//Check require exists
 		if (isset($method['require'])){
-			if (!is_string($method['require']) || !is_file($this->config['requireRoot'].$method['require'])) {
-				throw new Exception("The 'require' path you specified (\"".$this->config['requireRoot'].$method['require']."\") doesn't exist.");
+			if (!is_string($method['require']) || !is_file($method['require'])) {
+				throw new \Exception("The 'require' path you specified (\"".$method['require']."\") for method (".$method['id'].") doesn't exist.");
 			}
 		}
 		
-		//Save it
-		$this->_methods[$method['id']]=[
+		return [$id,[
 			"require"=>$method['require'],
 			"call"=>$method['call']
-		];
-		
-		return true;
+		]];
+
 	}
 	
-	public function registerMethods($array){
-		if (!is_array($array) || sizeof($array)<1){
-			throw new Exception("Method registerMethods requires a non-empty array."); 
+	protected function _sanitizeMethods($methods){
+		
+		if (!is_array($methods) || sizeof($methods)<1){
+			throw new \Exception("Method _sanitizeMethods requires a non-empty array."); 
 		}
-		foreach($array as $method){
-			$this->registerMethod($method);
+		
+		$newMethods=[];
+		foreach($methods as $id=>$method){
+			$newMethod = $this->_sanitizeMethod($id, $method);
+			$newMethods[$newMethod[0]]=$newMethod[1];
 		}	
-		return true;
+		
+		return $newMethods;
 	}
+	
+	public function registerMethod($id, $method=null){
+		
+		//Register single method
+		if (is_string($id)){
+		
+			$method = $this->_sanitizeMethod($id, $method);
+		
+			$this->methods[$method[0]]=$method[1];
+			
+			return true;
+		
+		//Loop through array of methods and register	
+		} else if (is_array($id) && sizeof($methods)>0){
+			
+			foreach($id as $mid=>$method){
+				$method = $this->_sanitizeMethod($mid, $method);
+				$this->methods[$method[0]]=$method[1];
+			}	
+			
+			return true;
+			
+		}
+		
+		return false;
+		
+	}
+
 }
 
 class Response {

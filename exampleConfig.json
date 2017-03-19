@@ -1,0 +1,9 @@
+{
+    "methods": {
+        "test": {
+            "require": "exampleMethods.php",
+            "call": "method_test"
+        }
+    },
+    "signedHash": "4b9e6165"
+}

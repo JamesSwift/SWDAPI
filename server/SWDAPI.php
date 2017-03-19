@@ -35,7 +35,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Carry on
-		return $result;
+		if (isset($result['require']) && is_string($result['require'])){
+			require_once($result['require']);
+		}
 
 	}
 	
@@ -93,8 +95,16 @@ class Response {
 	 public $status;
 	 public $data;
 	 
-	 public function __construct($status=200, $data) {
+	 public function __construct($status=200, $data=null) {
 		 $this->status = $status;
 		 $this->data = $data;
+		 
+		 if ($status===404 && $data===null){
+		 	$this->data = "Requested method was not found.";
+		 }
+		 
+		 if ($status===403 && $data===null){
+		 	$this->data = "Access to the requested method was denied.";
+		 }
 	 }
 }

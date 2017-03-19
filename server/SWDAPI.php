@@ -6,140 +6,95 @@ class Exception extends \Exception {
 	//Nothing to do here yet
 }
 
-class SWDAPI {
+require "../submodules/PHPBootstrap/PHPBootstrap.php";
+
+class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected $_config;
-	protected $_views;
-	protected $_allowedMethods=array("GET","POST","PUT","DELETE");
+	protected $_methods;
 	
-	public function __construct($_config=null){
-		$this->loadConfig($_config);
+	//Define this method:
+	public function loadDefaultConfig(){
+		$this->_config = [];
+		$this->_methods = [];
 	}
 	
-	public function loadConfig($_config){
-		//If config is an assoc array, just load it
-		if (is_array($_config)){
-			$this->config = $_config;
-			return true;
-		//If config is a path to a json file, parse and load it
-		} else if ($_config!==null){
-			return $this->loadJSON($_config);
-		}	
+	protected function _sanitizeConfig($config){
+		$this->registerMethods($config['methods']);
+		$this->config=$config['config'];
 	}
 	
-	public function loadJSON($_config){
-		//Check JSON file exists and has right extension
-		if (is_file($_config) && strtolower(substr($_config, -5))===".json"){
-			//Decode JSON and parse it
-			$file=json_decode(file_get_contents($_config), true);
-			$this->registerViews($file['views']);
-			$this->config=$file['config'];
-			return true;
-		}
-		return false;
-	}
-	
-	public function request($method, $URI, $headers = null, $body = null){
-		//Try to find the right view
-		$view=$this->findView($method, $URI);
+
+	public function request($method, $data, $authorizedUser=null){
+		//Try to find the right method
+		$result = $this->findMethod($method);
 		
-		//Check we found a view
-		if ($view===null){
+		//Check we found a method
+		if ($result===null){
 			return new Response(404);
 		}
 		
 		//Carry on
-		return $view;
+		return $result;
 
 	}
 	
-	public function findView($method, $URI){
-		foreach ($this->views as $view){
-			if (preg_match($view['pattern'], $URI)===1 ){ //&& in_array(strtoupper($method), $view['allowedMethods'])==true
-				return $view;
-			}
+	public function findMethod($method){
+		if (isset($this->_methods[$method])){
+			return $this->_methods[$method];
 		}
 		return null;
 	}
 	
-	public function getViews(){
-		return $this->views;
+	public function getMethods(){
+		return $this->_methods;
 	}
-	
-	public function set($what, $to){
-		$this->config[$what]=$to;
-	}
-	
-	public function registerView($view){
+
+	public function registerMethod($method){
 		
-		//Check Methods array
-		if (!isset($view['allowedMethods']) || !is_array($view['allowedMethods']) || sizeof($view['allowedMethods'])<1 ) {
-			throw new Exception("The array passed to registerView must contain an non-empty array named 'allowedMethods'.");
-		}
-		foreach($view['allowedMethods'] as &$method){
-			$method=strtoupper($method);
-			if (in_array($method, $this->allowedMethods)!==true){
-				throw new Exception("Unknown method specified in the 'allowedMethods' array.");
-			}
-		}
-		
-		//Check request is string
-		if (!is_string($view['pattern']) || strlen($view['pattern'])<1) {
-			throw new Exception("The array passed to registerView must contain an non-empty string named 'pattern'.");
+		//Check if method already exists
+		if (!isset($method['id']) || isset($this->_methods[$method['id']])){
+			throw new Exception("The array passed to registerMethod must contain a unique non-empty string named 'id'.");
 		}
 		
 		//Check call is string
-		if (!is_string($view['call']) || strlen($view['call'])<1) {
-			throw new Exception("The array passed to registerView must contain an non-empty string named 'call'.");
+		if (!is_string($method['call']) || strlen($method['call'])<1) {
+			throw new Exception("The array passed to registerMethod must contain an non-empty string named 'call'.");
 		}
 		
 		//Check require exists
-		if (isset($view['require'])){
-			if (!is_string($view['require']) || !is_file($this->config['requireRoot'].$view['require'])) {
-				throw new Exception("The 'require' path you specified (\"".$this->config['requireRoot'].$view['require']."\") doesn't exist.");
+		if (isset($method['require'])){
+			if (!is_string($method['require']) || !is_file($this->config['requireRoot'].$method['require'])) {
+				throw new Exception("The 'require' path you specified (\"".$this->config['requireRoot'].$method['require']."\") doesn't exist.");
 			}
 		}
 		
-		$this->views[]=array(
-			"allowedMethods"=>$view['allowedMethods'],
-			"pattern"=>$view['pattern'],
-			"call"=>$view['call'],
-			"require"=>$view['require']
-		);
+		//Save it
+		$this->_methods[$method['id']]=[
+			"require"=>$method['require'],
+			"call"=>$method['call']
+		];
+		
+		return true;
 	}
 	
-	public function registerViews($array){
+	public function registerMethods($array){
 		if (!is_array($array) || sizeof($array)<1){
-			throw new Exception("Method registerView requires a non-empty array."); 
+			throw new Exception("Method registerMethods requires a non-empty array."); 
 		}
-		foreach($array as $view){
-			$this->registerView($view);
-		}		
+		foreach($array as $method){
+			$this->registerMethod($method);
+		}	
+		return true;
 	}
 }
 
- class View {
-	 public $method;
-	 public $URI;
-	 public $headers = array();
-	 public $body;
-	 
-	public function __construct($method, $URI, $headers = null, $body = null) {
-		$this->method = $method;
-		$this->$URI = $URI;
-		$this->$headers = $headers;
-		$this->$body = $body;
-	}
- }
- 
- class Response {
+class Response {
 	 public $status;
-	 public $headers;
-	 public $body;
+	 public $data;
 	 
-	 public function __construct($status=200, $body=null, $headers=null) {
-		 $this->status=$status;
-		 $this->body=$body;
-		 $headers->headers=$headers;
+	 public function __construct($status=200, $data) {
+		 $this->status = $status;
+		 $this->data = $data;
 	 }
- }
+}

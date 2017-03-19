@@ -1,3 +1,4 @@
 [submodule "submodules/PHPBootstrap"]
 	path = submodules/PHPBootstrap
 	url = git@github.com:JamesSwift/PHPBootsrap.git
+	branch = master

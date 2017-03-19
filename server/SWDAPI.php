@@ -215,13 +215,59 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		return $newSettings;
-	}	
+	}
+	
+	public function listen(){
+		
+		//Get POST input
+		$raw_input = file_get_contents('php://input');
+		
+		//Check content type
+		if (!isset($_SERVER['CONTENT_TYPE'])){
+			return new Response(400);
+			
+		//JSON	
+		} else if ( $_SERVER['CONTENT_TYPE']!=="application/json" || $_SERVER['CONTENT_TYPE']!=="text/plain" ){
+			
+			$input = json_decode($raw_input, true);
+			
+		//All others	
+		} else {
+			return new Response(415);
+		}
+		
+		//Check if input was decoded correctly
+		if (!is_array($input)){
+			return new Response(400);
+		}
+		
+		//Look for method
+		if (isset($input['method']) && is_string($input['method']) && sizeof($input['method'])<100){
+			$method = $input['method'];
+		} else {
+			return new Response(404);
+		}
+			
+		//Look for data
+		if (isset($input['data'])){
+			$data = $input['data'];
+		} else {
+			$data = null;
+		}
+		
+		//Handle auth
+		//todo
+		
+		//Make request
+		return $this->request($method, $data);
+		
+	}
 
 }
 
 class Response {
 	 public $status;
-	 public $data;
+	 public $data = null;
 	 
 	 public function __construct($status=200, $data=null) {
 		 $this->status = $status;
@@ -234,5 +280,24 @@ class Response {
 		 if ($status===403 && $data===null){
 		 	$this->data = "Access to the requested resource was denied.";
 		 }
+		 
+		 if ($status===415 && $data===null){
+		 	$this->data = "Unsupported Media Type";
+		 }		 
+	 }
+	 
+	 public function sendHttpResponse(){
+	 	http_response_code($this->status);
+	 	
+	 	//Plain text
+	 	if (is_string($this->data)){
+	 		header('Content-Type: text/plain');
+	 		print $this->data;
+	 		
+	 	//Json
+	 	} else {
+	 		header('Content-Type: application/json');
+	 		print json_encode($this->data);
+	 	}
 	 }
 }

@@ -1,6 +1,15 @@
 <?php
 
-function method_test($data, $authInfo){
+function method_ping($data, $authInfo){
+    
+    return new \JamesSwift\SWDAPI\Response(
+        200, 
+        "pong"
+    );
+    
+}
+
+function method_authtest($data, $authInfo){
     
     return new \JamesSwift\SWDAPI\Response(
         200, 
@@ -15,7 +24,7 @@ function method_plus1($data, $authInfo){
     
     return new \JamesSwift\SWDAPI\Response(
         200, 
-        "The number is $num"
+        "The number is now $num"
     );
     
 }

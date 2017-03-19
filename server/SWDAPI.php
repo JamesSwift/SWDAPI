@@ -232,7 +232,7 @@ class Response {
 		 }
 		 
 		 if ($status===403 && $data===null){
-		 	$this->data = "Access to the requested method was denied.";
+		 	$this->data = "Access to the requested resource was denied.";
 		 }
 	 }
 }

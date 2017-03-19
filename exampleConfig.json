@@ -1,7 +1,13 @@
 {
     "methods": {
-        "test": {
-            "call": "method_test",
+        "ping": {
+            "call": "method_ping",
+            "src": [
+                "exampleMethods.php"
+            ]
+        },
+        "auth-test": {
+            "call": "method_authtest",
             "src": [
                 "exampleMethods.php"
             ],
@@ -14,5 +20,5 @@
             ]
         }
     },
-    "signedHash": "e2c6dc43"
+    "signedHash": "7c559664"
 }

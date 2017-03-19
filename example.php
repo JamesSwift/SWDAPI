@@ -2,7 +2,7 @@
 
 require "server/SWDAPI.php";
 
-$API = new \JamesSwift\SWDAPI\SWDAPI(__DIR__."/exampleConfig.json");
+$API = new \JamesSwift\SWDAPI\SWDAPI("exampleConfig.json");
 
 var_dump($API->request("test"));
 

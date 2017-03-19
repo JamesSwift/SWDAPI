@@ -2,13 +2,17 @@
     "methods": {
         "test": {
             "call": "method_test",
-            "src": "exampleMethods.php",
+            "src": [
+                "exampleMethods.php"
+            ],
             "requireAuthorizedUser": true
         },
         "plus1": {
             "call": "method_plus1",
-            "src": "exampleMethods.php"
+            "src": [
+                "exampleMethods.php"
+            ]
         }
     },
-    "signedHash": "ffe43402"
+    "signedHash": "e2c6dc43"
 }

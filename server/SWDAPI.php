@@ -59,11 +59,15 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Require method src file
-		if (isset($method['src']) && is_string($method['src'])){
+		if (isset($method['src']) && is_array($method['src']) && sizeof($method['src'])>0 ){
 			if (isset($settings['methodSrcRoot'])){
-				require_once($settings['methodSrcRoot'].$method['src']);
+				foreach ($method['src'] as $src){
+					require_once($settings['methodSrcRoot'].$src);
+				}
 			} else {
-				require_once($method['src']);
+				foreach ($method['src'] as $src){
+					require_once($src);
+				}
 			}
 		}
 		
@@ -110,17 +114,34 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			throw new \Exception("A method call definition must only contain the characters: 0-9 a-Z \\ _");
 		}		
 		
-		//Sanitize require filename
-		$newMethod['src']=$this->sanitizeFilePath($method['src']);		
+		//Src - convert string to array
+		if (is_string($method['src'])){
+			$method['src']=[$method['src']];
+		}
 		
-		//Check require exists
-		if (isset($newMethod['src'])){
-			$path = $newMethod['src'];
-			if (isset($this->settings['methodSrcRoot'])){
-				$path = $this->settings['methodSrcRoot'] . $path;
-			}
-			if (!is_string($newMethod['src']) || !is_file($path)) {
-				throw new \Exception("The 'src' path you specified (".$path.") for method (".$newID.") doesn't exist.");
+		//Loop through src array
+		if (is_array($method['src']) && sizeof($method['src'])>0){
+			$newMethod['src']=[];
+			
+			foreach($method['src'] as $src){
+				
+				if (!is_string($src)){
+					throw new \Exception("A method src definition must be either a string or an array of strings.");
+				}
+				
+				//Sanitize src filename
+				$src=$this->sanitizeFilePath($src);		
+			
+				//Check it exists
+				$path = $src;
+				if (isset($this->settings['methodSrcRoot'])){
+					$path = $this->settings['methodSrcRoot'] . $path;
+				}
+				if (!is_file($path)) {
+					throw new \Exception("The 'src' path you specified (".$path.") for method (".$newID.") doesn't exist.");
+				}
+				$newMethod['src'][]=$src;
+			
 			}
 		}
 		

@@ -9,7 +9,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected $settings;
 	protected $methods;
 	
-	//Define this method:
+	//////////////////////////////////////////////////////////////////////
+	// Methods required by PHPBootstrap
+	
 	public function loadDefaultConfig(){
 		$this->settings = [];
 		$this->methods = [];
@@ -18,23 +20,26 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _sanitizeConfig($config){
 		
 		$newConfig=[];
+
+		//Sanitize settings (if defined)
+		if (is_array($config['settings']) && sizeof($config['settings'])>0){
+			$newConfig['settings'] = $this->_sanitizeSettings($config['settings']);
+		}
+		
 		
 		//Sanitize methods (if defined)
 		if (is_array($config['methods']) && sizeof($config['methods'])>0){
 			$newConfig['methods'] = $this->_sanitizeMethods($config['methods']);
 		}
-		
-		
-		//Sanitize settings
-		
-		//none yet
-		
+
 		return $newConfig;
 		
 	}
 	
-
-	public function request($methodID, $data=null, $authorizedUser=null){
+	// EO methods required by PHPBootstrap
+	//////////////////////////////////////////////////////////////////////
+	
+	public function request($methodID, $data=null, $authInfo=null){
 
 		//Check we found a method
 		if (!isset($this->methods[$methodID])){
@@ -44,15 +49,28 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Shorthand
 		$method = $this->methods[$methodID];
 		
+		//Does this method require an authorized user?
+		if (isset($method['requireAuthorizedUser']) && $method['requireAuthorizedUser']===true){
+			
+			if (!isset($authInfo['authorizedUser']) || $authInfo['authorizedUser']==null ){
+				return new Response(403);
+			}
+			
+		}
+		
 		//Require method src file
-		if (isset($method['require']) && is_string($method['require'])){
-			require_once($method['require']);
+		if (isset($method['src']) && is_string($method['src'])){
+			if (isset($settings['methodSrcRoot'])){
+				require_once($settings['methodSrcRoot'].$method['src']);
+			} else {
+				require_once($method['src']);
+			}
 		}
 		
 		//Attempt to call method
 		try {
 			
-			return call_user_func($method['call'], $data, $authorizedUser);
+			return call_user_func($method['call'], $data, $authInfo);
 			
 			
 		//Catch any unhanlded exceptions and return a 500 message
@@ -68,9 +86,17 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 
 	protected function _sanitizeMethod($id, $method){
 		
+		$newMethod=[];
+		
 		//Check if method already exists
 		if (!isset($id) || isset($this->methods[$id])){
 			throw new \Exception("A method id definition must be a unique non-empty string.");
+		}
+		
+		//Check id is something sensible
+		$newID=preg_replace("[^0-9a-zA-Z/\\\-\._]", "", $id);
+		if ($newID!==$id){
+			throw new \Exception("A method id definition must only contain the characters: 0-9 a-Z \\ / - _ .");
 		}
 		
 		//Check call is string
@@ -78,17 +104,38 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			throw new \Exception("A method definition must contain an non-empty string named 'call'.");
 		}
 		
+		//Check call is something sensible
+		$newMethod['call']=preg_replace("[^0-9a-zA-Z\\_]", "", $method['call']);
+		if ($newMethod['call']!==$method['call']){
+			throw new \Exception("A method call definition must only contain the characters: 0-9 a-Z \\ _");
+		}		
+		
+		//Sanitize require filename
+		$newMethod['src']=$this->sanitizeFilePath($method['src']);		
+		
 		//Check require exists
-		if (isset($method['require'])){
-			if (!is_string($method['require']) || !is_file($method['require'])) {
-				throw new \Exception("The 'require' path you specified (\"".$method['require']."\") for method (".$method['id'].") doesn't exist.");
+		if (isset($newMethod['src'])){
+			$path = $newMethod['src'];
+			if (isset($this->settings['methodSrcRoot'])){
+				$path = $this->settings['methodSrcRoot'] . $path;
+			}
+			if (!is_string($newMethod['src']) || !is_file($path)) {
+				throw new \Exception("The 'src' path you specified (".$path.") for method (".$newID.") doesn't exist.");
 			}
 		}
 		
-		return [$id,[
-			"require"=>$method['require'],
-			"call"=>$method['call']
-		]];
+		//Check requireAuthorizedUser is bool
+		if (isset($method['requireAuthorizedUser'])){
+			if (!is_bool($method['requireAuthorizedUser'])){
+				throw new \Exception("A method 'requireAuthorizedUser' definition must be type boolean if it exists.");
+			}
+			if ($method['requireAuthorizedUser']===true){
+				$newMethod['requireAuthorizedUser']=true;
+			}
+			
+		}
+		
+		return [$newID, $newMethod];
 
 	}
 	
@@ -133,6 +180,21 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		return false;
 		
 	}
+	
+	protected function _sanitizeSettings($settings){
+		
+		$newSettings = [];
+
+		//methodSrcRoot - you can optionaly specify the root path that method['src'] will atempt to resolve from
+		if (isset($settings['methodSrcRoot'])){
+			$newSettings['methodSrcRoot'] = $this->sanitizeFilePath($settings['methodSrcRoot'], false, true);
+			
+			//load it straight away, as other sanitization filters rely on this
+			$this->settings['methodSrcRoot'] = $newSettings['methodSrcRoot'];
+		}
+		
+		return $newSettings;
+	}	
 
 }
 

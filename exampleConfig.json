@@ -1,9 +1,14 @@
 {
     "methods": {
         "test": {
-            "require": "exampleMethods.php",
-            "call": "method_test"
+            "call": "method_test",
+            "src": "exampleMethods.php",
+            "requireAuthorizedUser": true
+        },
+        "plus1": {
+            "call": "method_plus1",
+            "src": "exampleMethods.php"
         }
     },
-    "signedHash": "4b9e6165"
+    "signedHash": "ffe43402"
 }

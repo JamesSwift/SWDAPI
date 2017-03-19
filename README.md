@@ -1,5 +1,5 @@
 <h1>
-PHPAPI
+SWDAPI - A php API framework
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US" style="float:right;"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/88x31.png" /></a>
 </h1>
 
@@ -9,17 +9,17 @@ rather than using someone else's because:
 - What's the point of writing an API and only being able to call it over HTTP?
 - I want to be able to call the API from within PHP with as little overhead as possible
 - I want a simple framework
-- I want the power of reg-ex for matching paths
+- I don't want to create a REST style api
+- I don't want to extract variables from the method name
 
-##Get The Code
+## Get The Code
 To get a copy of the code, at your terminal type:
 
-    git clone git://github.com/JamesSwift/PHPAPI.git
-    git submodule init
-    git submodule update
+    git clone git://github.com/JamesSwift/SWDAPI.git
+    git submodule update --init -r
 
 ## License
 
-<span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">JamesSwift\PHPAPI</span> by 
-<a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/JamesSwift/PHPAPI" property="cc:attributionName" rel="cc:attributionURL">James Swift</a>
+<span xmlns:dct="http://purl.org/dc/terms/" property="dct:title">JamesSwift\SWDAPI</span> by 
+<a xmlns:cc="http://creativecommons.org/ns#" href="https://github.com/JamesSwift/SWDAPI" property="cc:attributionName" rel="cc:attributionURL">James Swift</a>
  is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US">Creative Commons Attribution-ShareAlike 3.0 Unported License</a>.

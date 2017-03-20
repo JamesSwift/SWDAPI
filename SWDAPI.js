@@ -1,19 +1,35 @@
-
-
 var swdapi = swdapi || (function(){
+	
+	//Test that needed components exist
+	if (XMLHttpRequest===undefined){
+		throw "SWDAPI: Required component 'XMLHttpRequest' not defined."
+	}
+	if (Date.now===undefined){
+		throw "SWDAPI: Required component 'Date.now' not defined."
+	}
+	if (Number.isInteger===undefined){
+		throw "SWDAPI: Required component 'Number.isInteger' not defined."
+	}
+	if (forge_sha256===undefined){
+		throw "SWDAPI: Required component 'forge_sha256' not defined. Did you include it?"
+	}
     
     var endpointURI,
         serverTimeOffset = 0;
     
     function generateMeta(method, body){
 		
-		var meta = {};
+		var meta = {},
+			sT = getServerDate().getTime();
 		
 		//Nonce
 		meta.nonce = (Math.random().toString(36)+'00000000000000000').slice(2, 10+2);
 		
-		//Set expiry to 2 minutes from now
-		meta.expires = Math.floor(getServerDate().getTime() / 1000)+(60*2);
+		//Set expiry to be +/- 1 minute
+		meta.valid = { 
+			from: Math.floor(sT / 1000)-(60*1),
+			to: Math.floor(sT / 1000)+(60*1)
+		};
 		
 		//Response type
 		meta.response = "json";
@@ -37,7 +53,7 @@ var swdapi = swdapi || (function(){
 		}
 		
 		//Join the dots and hash
-		//keyEnc = CryptoJS.SHA256(text+keyPlain).toString();
+		keyEnc = forge_sha256(text+keyPlain).toString();
 		
 		return keyEnc;
 	}
@@ -107,18 +123,33 @@ var swdapi = swdapi || (function(){
         return new Date(Date.now()+serverTimeOffset);
     }
 	
-	return function(URI, onloadCallback=null){
+	return function(URI, onloadCallback=null, srvTmOf=null){
 	    
 	    //Store the endpoint
 	    endpointURI = URI;
 
-        //Send a HEAD request to API to find server time and store in serverTimeOffset
-        findServerTimeOffset(onloadCallback);
-        
+		//We need to find the time offset to the server so that we can
+		//set request expiry to a nice short time
+		
+		//If the server offset was specified use it
+		if (Number.isInteger(srvTmOf)===true){
+			serverTimeOffset = srvTmOf;
+			
+			if (typeof onloadCallback === "function"){
+			    onloadCallback();
+			}
+		
+		//If not, send a HEAD request to API to find server time
+		} else {
+	        findServerTimeOffset(onloadCallback);
+		} 
+			
+			
+        //Return the api object
         return { 
             "request": request,
             "serverDate": getServerDate,
-            "authenticate": endpointURI
+            "authenticate": null
         }
         
 	};

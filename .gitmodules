@@ -2,3 +2,6 @@
 	path = submodules/PHPBootstrap
 	url = git@github.com:JamesSwift/PHPBootsrap.git
 	branch = master
+[submodule "submodules/forge-sha256"]
+	path = submodules/forge-sha256
+	url = https://github.com/brillout/forge-sha256.git

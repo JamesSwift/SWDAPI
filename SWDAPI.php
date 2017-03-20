@@ -8,6 +8,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected $settings;
 	protected $methods;
+	protected $_securityFallback;
 	
 	//////////////////////////////////////////////////////////////////////
 	// Methods required by PHPBootstrap
@@ -39,6 +40,16 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	// EO methods required by PHPBootstrap
 	//////////////////////////////////////////////////////////////////////
 	
+	
+	public function registerSecurityFallback(callable $callback){
+		$this->_securityFallback = $callback;
+	}
+	
+	public function getConfig(){
+		return [$this->settings, $this->methods];
+	}
+		
+		
 	public function request($methodID, $data=null, $authInfo=null){
 
 		//Check we found a method

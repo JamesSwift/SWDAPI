@@ -73,7 +73,7 @@ var swdapi = swdapi || (function(){
     		JSON.stringify({
     		    "method": method,
     			"meta" : meta,
-    			"body" : body
+    			"data" : body
     		})
     	);
     	

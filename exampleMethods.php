@@ -19,12 +19,12 @@ function method_authtest($data, $authInfo){
 }
 
 function method_plus1($data, $authInfo){
-    
+
     $num = $data['number'] + 1;
     
     return new \JamesSwift\SWDAPI\Response(
         200, 
-        "The number is now $num"
+        $num
     );
     
 }

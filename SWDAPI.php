@@ -289,16 +289,14 @@ class Response {
 	 public function sendHttpResponse(){
 	 	http_response_code($this->status);
 	 	
-	 	//Plain text
-	 	if (is_string($this->data)){
-	 		header('Content-Type: text/plain');
-	 		print $this->data;
-	 		
 	 	//Json
-	 	} else if (is_array($this->data)){
+	 	if (is_array($this->data)){
 	 		header('Content-Type: application/json');
 	 		print json_encode($this->data);
+	 		
+	 	//Plain text
 	 	} else {
+	 		header('Content-Type: text/plain');
 	 		print $this->data;
 	 	}
 	 }

@@ -3,16 +3,31 @@
 <script type="text/javascript">
     
     //Create api instance
-    var api = swdapi("example-http.php",
+    var api = swdapi(
+        
+        //Set url of endpoint
+        "example-http.php",
     
-        //When api is ready, send request
+        //Callback when api is ready
         function(){
     
-            api.request("ping", null, function(body){
-                document.getElementById("output").innerHTML = body;
-            })
+            //Send a basic request
+            api.request("ping", null,
+            
+                //Callback when response is received
+                function(data){
+                    
+                    //Dump response into div below
+                    document.getElementById("output").innerHTML = data;
+                }
+            );
             
         }
+        
+        //Optionally tell the api what time the server thinks it is.
+        //If not specified, the api makes a HEAD request to the server
+        //to find the time
+        //, <?php print time(); ?>
     );
     
 </script>

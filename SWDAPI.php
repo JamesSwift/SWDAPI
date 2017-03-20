@@ -326,6 +326,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		$text = json_encode([$method,$meta,$data]);
 		$keyPlain = "swdapi";
+		
+		//Add user signature here
+		
+		//Hash the text
 		$keyEnc = hash("sha256", $text.$keyPlain);
 		
 		if ($oldKey!==$keyEnc){

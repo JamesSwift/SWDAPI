@@ -20,6 +20,8 @@ var swdapi = swdapi || (function(){
 		
 		//Sign with session secret & user pin code
 		meta.signature = signRequest(method, body, meta);
+		
+		return meta;
 	}
 	
 	function signRequest(method, body, meta){
@@ -77,7 +79,7 @@ var swdapi = swdapi || (function(){
     		})
     	);
     	
-    	return true
+    	return true;
     }
     
     function findServerTimeOffset(onloadCallback){

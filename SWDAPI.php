@@ -60,6 +60,15 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Shorthand
 		$method = $this->methods[$methodID];
 		
+		//Was $authInfo passed?
+		if ($authInfo===null){
+			
+			//Try fallback security
+			if (is_callable($this->_securityFallback)){
+				$authInfo = call_user_func($this->_securityFallback);
+			}
+		}
+		
 		//Does this method require an authorized user?
 		if (isset($method['requireAuthorizedUser']) && $method['requireAuthorizedUser']===true){
 			

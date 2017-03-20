@@ -17,7 +17,7 @@ var swdapi = swdapi || (function(){
     var endpointURI,
         serverTimeOffset = 0;
     
-    function generateMeta(method, body){
+    function generateMeta(method, data){
 		
 		var meta = {},
 			sT = getServerDate().getTime();
@@ -27,33 +27,30 @@ var swdapi = swdapi || (function(){
 		
 		//Set expiry to be +/- 1 minute
 		meta.valid = { 
-			from: Math.floor(sT / 1000)-(60*1),
-			to: Math.floor(sT / 1000)+(60*1)
+			"from": Math.floor(sT / 1000)-(60),
+			"to": Math.floor(sT / 1000)+(60)
 		};
 		
-		//Response type
-		meta.response = "json";
-		
 		//Sign with session secret & user pin code
-		meta.signature = signRequest(method, body, meta);
+		meta.signature = signRequest(method, meta, data);
 		
 		return meta;
 	}
 	
-	function signRequest(method, body, meta){
+	function signRequest(method, meta, data){
 		
 		var text, keyPlain, keyEnc;
 		
-		text = JSON.stringify({method, body, meta});
+		text = JSON.stringify([method, meta, data]);
 		keyPlain = "swdapi";
 		
 		//Include user key and pin in hmac key
-		if (meta.user){
+		if (meta.user!==undefined){
 			//keyPlain += users[activeUser].sessionKey + users[activeUser].pin;
 		}
 		
 		//Join the dots and hash
-		keyEnc = forge_sha256(text+keyPlain).toString();
+		keyEnc = forge_sha256(text+keyPlain);
 		
 		return keyEnc;
 	}

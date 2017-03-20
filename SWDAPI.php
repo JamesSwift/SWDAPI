@@ -222,9 +222,14 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Get POST input
 		$raw_input = file_get_contents('php://input');
 		
+		//Was any input sent? Don't complain if not, just show welcome.
+		if ($raw_input==""){
+			return new Response(200, "Welcome. Please specify a method.");
+		}
+		
 		//Check content type
 		if (!isset($_SERVER['CONTENT_TYPE'])){
-			return new Response(400);
+			return new Response(400, "Bad Request: You must specify content-type.");
 			
 		//JSON	
 		} else if ( $_SERVER['CONTENT_TYPE']!=="application/json" || $_SERVER['CONTENT_TYPE']!=="text/plain" ){
@@ -237,22 +242,45 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Check if input was decoded correctly
-		if (!is_array($input)){
-			return new Response(400);
+		if ($input===null){
+			return new Response(400, "Bad Request: No data was sent or it was malformed.");
 		}
 		
 		//Look for method
-		if (isset($input['method']) && is_string($input['method']) && sizeof($input['method'])<100){
+		if (!isset($input['method'])){
+			return new Response(400, "Bad Request: Please specify a method.");
+		}
+		
+		if (is_string($input['method']) && sizeof($input['method'])<100){
 			$method = $input['method'];
 		} else {
-			return new Response(404);
+			return new Response(400, "Bad Request: The method you specified was malformed.");
 		}
-			
+		
+		//Look for meta
+		if (isset($input['meta'])){
+			$meta = $input['meta'];
+		} else {
+			$meta = null;
+		}
+		
 		//Look for data
 		if (isset($input['data'])){
 			$data = $input['data'];
 		} else {
 			$data = null;
+		}
+	
+		//Enforce meta
+		$metaCheck = $this->_checkMeta($meta);
+		if ($metaCheck!==true){
+			return $metaCheck;
+		}
+		
+		//Check signature
+		$sigCheck = $this->_checkSignature($method, $meta, $data);
+		if ($sigCheck!==true){
+			return $sigCheck;
 		}
 		
 		//Handle auth
@@ -260,6 +288,51 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Make request
 		return $this->request($method, $data);
+		
+	}
+	
+	protected function _checkMeta($meta){
+		
+		//Check nonce is unused
+		//todo
+		
+		//Check request hasn't expired
+		
+		//Check data exists
+		if (!isset($meta['valid']['from']) || !isset($meta['valid']['to'])){
+			return new Response(400, "Bad Request: You must specify meta.valid.from and meta.valid.to");
+		}
+
+		//Check data
+		if ($meta['valid']['from']>time()){
+			return new Response(400, "Bad Request: meta.valid.from is in the future. Check your system time.");
+		}
+		if ($meta['valid']['to']<time()){
+			return new Response(400, "Bad Request: meta.valid.to is in the past.".$meta['valid']['to']);
+		}
+		
+		//Check signature exists
+		if (!isset($meta['signature'])){
+			return new Response(400, "Bad Request: This request has not been signed (meta.signature).");
+		}
+		
+		return true;
+	}
+	
+	protected function _checkSignature($method, $meta, $data){
+		
+		$oldKey = $meta['signature'];
+		unset($meta['signature']);
+		
+		$text = json_encode([$method,$meta,$data]);
+		$keyPlain = "swdapi";
+		$keyEnc = hash("sha256", $text.$keyPlain);
+		
+		if ($oldKey!==$keyEnc){
+			return new Response(400, "Bad Request: The signature (meta.signature) didn't match.");
+		}
+		
+		return true;
 		
 	}
 

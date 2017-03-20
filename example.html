@@ -1,0 +1,18 @@
+<script type="text/javascript" src="SWDAPI.js"></script>
+<script type="text/javascript">
+    
+    //Create api instance
+    var api = swdapi("example-http.php",
+    
+        //When api is ready, send request
+        function(){
+    
+            api.request("ping", null, function(body){
+                document.getElementById("output").innerHTML = body;
+            })
+            
+        }
+    );
+    
+</script>
+<div id="output"></div>

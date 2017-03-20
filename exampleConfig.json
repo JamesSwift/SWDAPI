@@ -1,4 +1,11 @@
 {
+    "settings": {
+        "db": {
+            "dsn": "mysql:host=localhost;dbname=swdapi",
+            "user": "root",
+            "pass": ""
+        }
+    },
     "methods": {
         "ping": {
             "call": "method_ping",
@@ -20,5 +27,5 @@
             ]
         }
     },
-    "signedHash": "7c559664"
+    "signedHash": "11ee0fe4"
 }

@@ -50,7 +50,6 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		return [$this->settings, $this->methods];
 	}
 		
-		
 	public function request($methodID, $data=null, $authInfo=null){
 
 		//Check we found a method
@@ -235,6 +234,26 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			$this->settings['methodSrcRoot'] = $newSettings['methodSrcRoot'];
 		}
 		
+		//db
+		if (isset($settings['db'])){
+			if (!isset($settings['db']['user']) || !is_string($settings['db']['user']) || preg_match("$[^0-9a-zA-Z\-\\/\.]$", $settings['db']['user'])){
+				throw new \Exception("The settings.db.user value is undefined or is an invalid format.");
+			}
+			if (!isset($settings['db']['pass']) || !is_string($settings['db']['pass']) ){
+				throw new \Exception("The settings.db.pass value is undefined or is an invalid format.");
+			}
+			if (!isset($settings['db']['dsn']) || !is_string($settings['db']['dsn']) ){
+				throw new \Exception("The settings.db.dsn value is undefined or is an invalid format.");
+			}
+			
+			$newSettings['db'] = [
+				"dsn"=>$settings['db']['dsn'],
+				"user"=>$settings['db']['user'],
+				"pass"=>$settings['db']['pass'],
+			];
+			
+		}
+		
 		return $newSettings;
 	}
 	
@@ -272,7 +291,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			return new Response(400, "Bad Request: Please specify a method.");
 		}
 		
-		if (is_string($input['method']) && sizeof($input['method'])<100){
+		if (is_string($input['method']) && strlen($input['method'])<100){
 			$method = $input['method'];
 		} else {
 			return new Response(400, "Bad Request: The method you specified was malformed.");
@@ -314,8 +333,18 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected function _checkMeta($meta){
 		
+		//Check nonce exists
+		if (!isset($meta['nonce'])){
+			return new Response(400, "Bad Request: You must specify a meta.nonce");
+		}
+		
+		//Check nonce format
+		if (strlen($meta['nonce'])!=10 || preg_match("/[^0-9a-zA-Z]/", $meta['nonce'])!==0){
+			return new Response(400, "Bad Request: The nonce you specified is an invalid format.");
+		}
+		
 		//Check nonce is unused
-		//todo
+		
 		
 		//Check request hasn't expired
 		

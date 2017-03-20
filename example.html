@@ -12,14 +12,23 @@
         function(){
     
             //Send a basic request
-            api.request("ping", null,
+            api.request(
+                
+                //Method name
+                "ping",
+                
+                //Data to send
+                null,
             
-                //Callback when response is received
+                //Optional callback when response is received
                 function(data){
                     
                     //Dump response into div below
                     document.getElementById("output").innerHTML = data;
-                }
+                },
+                
+                //Optional callback when none-200 response is received
+                console.log
             );
             
         }

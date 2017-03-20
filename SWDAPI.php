@@ -16,6 +16,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	public function loadDefaultConfig(){
 		$this->settings = [];
 		$this->methods = [];
+		$_securityFallback = null;
 	}
 	
 	protected function _sanitizeConfig($config){

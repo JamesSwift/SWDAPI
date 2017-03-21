@@ -9,6 +9,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected $settings;
 	protected $methods;
 	protected $_securityFallback;
+	protected $_db;
 	
 	//////////////////////////////////////////////////////////////////////
 	// Methods required by PHPBootstrap
@@ -48,6 +49,33 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	public function getConfig(){
 		return [$this->settings, $this->methods];
+	}
+	
+	protected function _connectDB(){
+		
+		//Are we already connected
+		if ($this->_db instanceof \PDO){
+			return true;
+		}
+		
+		//Are the settings loaded?
+		if (!isset($this->settings['db']['user']) || !isset($this->settings['db']['pass']) || !isset($this->settings['db']['dsn'])){
+			throw new \Exception("DB connection error. One or more required setting is missing.");
+		}
+		
+		//Attempt to connect
+		
+		$this->_db  = new \PDO(
+			$this->settings['db']['dsn'], 
+			$this->settings['db']['user'], 
+			$this->settings['db']['pass'], 
+			[
+			    \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
+			    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+			    \PDO::ATTR_EMULATE_PREPARES   => false,
+			]
+		);
+		return true;
 	}
 		
 	public function request($methodID, $data=null, $authInfo=null){
@@ -258,6 +286,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	}
 	
 	public function listen(){
+		
+		//Establish DB connection
+		$this->_connectDB();
 		
 		//Get POST input
 		$raw_input = file_get_contents('php://input');

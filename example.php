@@ -37,6 +37,7 @@
         //If not specified, the api makes a HEAD request to the server
         //to find the time
         //,{ "serverTimestamp": <?php print time(); ?>}
+        ,{"client":{"name":"test-client"}}
     );
     
 </script>

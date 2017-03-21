@@ -30,10 +30,18 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
 	        "setClientData": (config['setClientData']!==undefined ? config['setClientData'] : setClientData_Default),
     	};
     
+	//Check if any client info was passed
+	if (config.client!==undefined){
+		
+		//Save it
+		pub.setClientData(config.client);
+		
+	}
+	
 	//We need to find the time offset to the server so that we can
 	//set request expiry to a nice short time
 	
-	//If the server offset was specified use it
+	//If the serverTimestamp was specified use it
 	if (config['serverTimestamp']!==undefined){
 		
 		//Check that the supplied timestamp is correct format
@@ -49,9 +57,9 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
 			    setTimeout(onloadCallback, 10);
 			}
 		} else {
-			console.log("Supplied serverTimestamp was an invalid format. Must be positive integer.");
+			console.log("Supplied serverTimestamp was an invalid format. Must be positive integer. Querying server for time...");
 		}
-	}	
+	}
 	
 	//If not, send a request to API to find server time
 	if (serverTimeOffset===null) {

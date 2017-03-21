@@ -1,4 +1,4 @@
-var swdapi = swdapi || function(URI, onloadCallback=null, srvTmOf=null){
+var swdapi = swdapi || function(URI, onloadCallback=null, config=null){
 	
 	///////////////////////////////
 	// Begin constructor
@@ -20,22 +20,34 @@ var swdapi = swdapi || function(URI, onloadCallback=null, srvTmOf=null){
     //Variable for this API instance
     var endpointURI = URI,
     	clientVerified = false,
-        serverTimeOffset = 0,
+        serverTimeOffset = null,
         pub;
     
 	//We need to find the time offset to the server so that we can
 	//set request expiry to a nice short time
 	
 	//If the server offset was specified use it
-	if (Number.isInteger(srvTmOf)===true){
-		serverTimeOffset = srvTmOf;
+	if (config!==null && config['serverTimestamp']!==undefined){
 		
-		if (typeof onloadCallback === "function"){
-		    onloadCallback();
+		//Check that the supplied timestamp is correct format
+		if (Number.isInteger(config['serverTimestamp'])===true){
+			
+			//Compute difference between server and local time (roughly)
+			var st = new Date(config.serverTimestamp*1000);
+			serverTimeOffset = st.getTime() - Date.now();
+			console.log("Server time offset from us: "+serverTimeOffset+"ms");
+			
+			//Fire up the Callback
+			if (typeof onloadCallback === "function"){
+			    setTimeout(onloadCallback, 10);
+			}
+		} else {
+			console.log("Supplied serverTimestamp was an invalid format. Must be positive integer.");
 		}
+	}	
 	
 	//If not, send a request to API to find server time
-	} else {
+	if (serverTimeOffset===null) {
         findServerTimeOffset(onloadCallback);
 	} 
 		
@@ -46,10 +58,7 @@ var swdapi = swdapi || function(URI, onloadCallback=null, srvTmOf=null){
         "request": request,
         "serverDate": getServerDate,
         "getClientData": getClientData_Default,
-        "setClientData": setClientData_Default,
-        "getEndpoint": function(){
-        	return endpointURI;
-        }
+        "setClientData": setClientData_Default
     }
     
     return pub;

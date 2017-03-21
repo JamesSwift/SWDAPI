@@ -16,6 +16,10 @@ To get a copy of the code, at your terminal type:
     git clone git://github.com/JamesSwift/SWDAPI.git
     git submodule update --init -r
     
+You then need to setup the database. Assuming the default mysql root account run:
+
+    mysql -u root < db.sql
+    
 ## Configuration
 Configuration can be done in several ways, but generally through a json file listing methods (or views if your prefer the term) and some general 
 configuration settings such as <a href="https://github.com/JamesSwift/SWDAPI/blob/master/exampleConfig.json">exampleConfig.json</a>. The advantage 

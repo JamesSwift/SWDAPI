@@ -287,9 +287,6 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	public function listen(){
 		
-		//Establish DB connection
-		$this->_connectDB();
-		
 		//Get POST input
 		$raw_input = file_get_contents('php://input');
 		
@@ -363,6 +360,20 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	}
 	
 	protected function _checkMeta($meta){
+
+		//Check exipry data exists
+		if (!isset($meta['valid']['from']) || !is_int($meta['valid']['from']) || !isset($meta['valid']['to']) || !is_int($meta['valid']['to'])){
+			return new Response(400, "Bad Request: You must specify valid meta.valid.from and meta.valid.to values (integers).");
+		}
+
+		//Check expiry data
+		if ($meta['valid']['from']>time()){
+			return new Response(400, "Bad Request: meta.valid.from is in the future. Check your system time.");
+		}
+		if ($meta['valid']['to']<time()){
+			return new Response(400, "Bad Request: meta.valid.to is in the past.".$meta['valid']['to']);
+		}
+		
 		
 		//Check nonce exists
 		if (!isset($meta['nonce'])){
@@ -374,22 +385,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			return new Response(400, "Bad Request: The nonce you specified is an invalid format.");
 		}
 		
-		//Check nonce is unused
-		
-		
-		//Check request hasn't expired
-		
-		//Check data exists
-		if (!isset($meta['valid']['from']) || !isset($meta['valid']['to'])){
-			return new Response(400, "Bad Request: You must specify meta.valid.from and meta.valid.to");
-		}
-
-		//Check data
-		if ($meta['valid']['from']>time()){
-			return new Response(400, "Bad Request: meta.valid.from is in the future. Check your system time.");
-		}
-		if ($meta['valid']['to']<time()){
-			return new Response(400, "Bad Request: meta.valid.to is in the past.".$meta['valid']['to']);
+		//Check nonce is unique (by attempting to store it)
+		if ($this->_registerNonce($meta['nonce'], $meta['valid']['to'])===false){
+			return new Response(400, "Bad Request: The nonce you specified has already been used.");
 		}
 		
 		//Check signature exists
@@ -398,6 +396,34 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		return true;
+	}
+	
+	protected function _registerNonce($nonce, $expires){
+		
+		//Make sure qe are connected to DB
+		$this->_connectDB();
+		
+		//Clear old nonce
+		$q = $this->_db->prepare("DELETE FROM nonce WHERE expires < :timestamp");
+		$q->execute(["timestamp"=>time()]);
+		
+		//Attempt to insert nonce
+		try {
+			
+			$q = $this->_db->prepare("INSERT INTO nonce SET value=:nonce, expires=:timestamp");
+			$q->execute(["nonce"=>$nonce, "timestamp"=>$expires]);	
+			return true;
+			
+		} catch (\PDOException $e){
+			//If the error is a duplicate key constraint violation return false 
+			if ($e->getCode() == 1062) {
+		        return false;
+		        
+		    //If some other error, throw it again
+		    } else {
+		        throw $e;
+		    }	
+		}
 	}
 	
 	protected function _checkSignature($method, $meta, $data){

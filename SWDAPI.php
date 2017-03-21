@@ -236,13 +236,13 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//db
 		if (isset($settings['db'])){
-			if (!isset($settings['db']['user']) || !is_string($settings['db']['user']) || preg_match("$[^0-9a-zA-Z\-\\/\.]$", $settings['db']['user'])){
+			if (isset($settings['db']['user']) && (!is_string($settings['db']['user']) || preg_match("$[^0-9a-zA-Z\-\\/\.]$", $settings['db']['user']))){
 				throw new \Exception("The settings.db.user value is undefined or is an invalid format.");
 			}
-			if (!isset($settings['db']['pass']) || !is_string($settings['db']['pass']) ){
+			if (isset($settings['db']['pass']) && !is_string($settings['db']['pass']) ){
 				throw new \Exception("The settings.db.pass value is undefined or is an invalid format.");
 			}
-			if (!isset($settings['db']['dsn']) || !is_string($settings['db']['dsn']) ){
+			if (isset($settings['db']['dsn']) && !is_string($settings['db']['dsn']) ){
 				throw new \Exception("The settings.db.dsn value is undefined or is an invalid format.");
 			}
 			

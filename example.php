@@ -31,12 +31,12 @@
                 console.log
             );
             
-        },
+        }
         
         //Optionally tell the api what time the server thinks it is.
         //If not specified, the api makes a HEAD request to the server
         //to find the time
-        { "serverTimestamp": <?php print time(); ?>}
+        //,{ "serverTimestamp": <?php print time(); ?>}
     );
     
 </script>

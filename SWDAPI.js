@@ -1,4 +1,4 @@
-var swdapi = swdapi || function(URI, onloadCallback=null, config=null){
+var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
 	
 	///////////////////////////////
 	// Begin constructor
@@ -21,13 +21,20 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config=null){
     var endpointURI = URI,
     	clientVerified = false,
         serverTimeOffset = null,
-        pub;
+        
+        //Defined the public object
+        pub = { 
+	        "request": request,
+	        "serverDate": getServerDate,
+	        "getClientData": (config['getClientData']!==undefined ? config['getClientData'] : getClientData_Default),
+	        "setClientData": (config['setClientData']!==undefined ? config['setClientData'] : setClientData_Default),
+    	};
     
 	//We need to find the time offset to the server so that we can
 	//set request expiry to a nice short time
 	
 	//If the server offset was specified use it
-	if (config!==null && config['serverTimestamp']!==undefined){
+	if (config['serverTimestamp']!==undefined){
 		
 		//Check that the supplied timestamp is correct format
 		if (Number.isInteger(config['serverTimestamp'])===true){
@@ -51,15 +58,8 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config=null){
         findServerTimeOffset(onloadCallback);
 	} 
 		
-    //////////////////////////////////////////
+
     //Return the public object
-    
-    pub = { 
-        "request": request,
-        "serverDate": getServerDate,
-        "getClientData": getClientData_Default,
-        "setClientData": setClientData_Default
-    }
     
     return pub;
     

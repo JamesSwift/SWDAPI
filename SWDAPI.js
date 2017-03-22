@@ -43,7 +43,7 @@ var swdapi = swdapi || function(URI, config={}){
 		//Check that the supplied timestamp is correct format
 		if (Number.isInteger(config['serverTimestamp'])===true){
 			
-			storeServerTimeOffset(config['serverTimestamp']);
+			storeServerTimeOffset(config['serverTimestamp']*1000);
 			
 		} else {
 			console.log("Supplied serverTimestamp was an invalid format. Must be positive integer. The server time will be noted on the next request instead.");
@@ -171,40 +171,87 @@ var swdapi = swdapi || function(URI, config={}){
 		}
 	}
 	
-	function request(method, body, successCallback, failureCallback = null){
+	function request(method, data, successCallback, failureCallback = null){
 	
     	var xmlhttp = new XMLHttpRequest(),
-    		meta = null;
+    		meta = null,
+    		ttl = 5;
     		
     	//Generate meta for this request (and sign it)
-    	meta = generateMeta(method, body);
+    	meta = generateMeta(method, data);
     	
     	xmlhttp.open("POST", endpointURI);
     	xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    	
+    	//Response handler
     	xmlhttp.onreadystatechange = function() {
-			if (xmlhttp.readyState === xmlhttp.DONE) {
-				if (xmlhttp.status === 200) {
-				    if (typeof successCallback === "function"){
-				        if (xmlhttp.getResponseHeader('content-type')==="application/json"){
-				            successCallback(JSON.parse(xmlhttp.responseText));
-				        } else {
-					        successCallback(xmlhttp.responseText);
-				        }
-				    }
-				}
-				else {
-				    if (typeof failureCallback === "function"){
-					    failureCallback(xmlhttp);
-				    }
-				}
+    		
+    		//Check that loading is complete
+			if (xmlhttp.readyState !== xmlhttp.DONE) {
+				return;	
 			}
+			
+			//Decode json response
+			var response = (xmlhttp.getResponseHeader('content-type')==="application/json" ? JSON.parse(xmlhttp.responseText) : xmlhttp.responseText);
+			
+			//OK - route response to callback
+			if (xmlhttp.status === 200) {
+			    if (typeof successCallback === "function"){
+			    	successCallback(response, method, data);
+			    }
+			    return true;
+			  
+			}
+			
+			//Handle non-200 response codes
+		
+			//Decrease TTL
+			ttl-=1;
+			
+			//Is this a SWDAPI error
+			if (typeof response !== "string" && response['SWDAPI-Error'] !==undefined && response['SWDAPI-Error']['code'] !==undefined ){
+				
+				var code = response['SWDAPI-Error']['code'];
+				
+				//Is it one we want to recover from?
+				
+				//valid.from & valid.to errors
+				if (code>=400006 && code<=400009){
+					
+					console.log("Request failed due to expiry data. Reseting system time offset and trying again.");
+					
+					//Reset serverTimeOffset with date supplied by this request
+					storeServerTimeOffset(xmlhttp.getResponseHeader("date"));
+					
+					
+				//We don't recover frrm this error
+				} else {
+					ttl = 0;
+				}
+				
+			//Make sure request doesn't re-run
+			} else {
+				ttl = 0;
+			}
+			
+			//Should we re-run the request?
+			if (ttl>0){
+				pub.request(method, data, successCallback, failureCallback);
+				return true;
+			}
+			
+			//Call the user defined eror handler
+		    if (typeof failureCallback === "function"){
+			    failureCallback(xmlhttp, method, data);
+		    }
+
     	};
     	
     	xmlhttp.send(
     		JSON.stringify({
     		    "method": method,
     			"meta" : meta,
-    			"data" : body
+    			"data" : data
     		})
     	);
     	
@@ -213,9 +260,10 @@ var swdapi = swdapi || function(URI, config={}){
     
     function storeServerTimeOffset(timestamp){
         
-	    var serverDate = new Date(timestamp); 
-		serverTimeOffset = serverDate.getTime() - Date.now();
-		console.log("Server time offset from us: "+serverTimeOffset+"ms");
+	    var sDate = new Date(timestamp),
+	    	newServerTimeOffset = sDate.getTime() - Date.now();; 
+		console.log("Stored server clock offset: "+newServerTimeOffset+"ms (previously "+serverTimeOffset+"ms)");
+		serverTimeOffset = newServerTimeOffset;	
 
     }
     

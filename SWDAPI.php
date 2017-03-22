@@ -634,17 +634,20 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		if ($action==="create-new"){
 			
+			//Sanitize the data
+			$secret = hash("sha256", "swdapi".mt_rand().$data['salt'].mt_rand().mt_rand());
+			$name=substr($data['name'],0,140);
+			
 			try {
 				//Attempt to create new client
 				$q = $this->_db->prepare("INSERT INTO clients SET name=:name, secret=:secret");
-				$secret = hash("sha256", "swdapi".mt_rand().$data['salt'].mt_rand().mt_rand());
 				$r = $q->execute([
-						"name"=>substr($data['name'],0,140),
+						"name"=>$name,
 						"secret"=>$secret
 				]);
 				
 				//Create response
-				$response['name'] = $clientData['name'];
+				$response['name'] = $name;
 				$response['id'] = $this->_db->lastInsertId();
 				$response['secret'] = $secret;
 				

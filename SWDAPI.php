@@ -101,7 +101,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		if (isset($method['requireAuthorizedUser']) && $method['requireAuthorizedUser']===true){
 			
 			if (!isset($authInfo['authorizedUser']) || $authInfo['authorizedUser']==null ){
-				return new Response(403);
+				return new Response(403, ["SWDAPI-Error"=>[
+					"code"=>403001,
+					"message"=>"The method you requested requires authentication."
+				]]);
 			}
 			
 		}
@@ -120,15 +123,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Attempt to call method
-		try {
-			
-			return call_user_func($method['call'], $data, $authInfo);
-			
-			
-		//Catch any unhanlded exceptions and return a 500 message
-		} catch (\Exception $e){
-			return new Response(500, $e->getMessage());
-		}
+		return call_user_func($method['call'], $data, $authInfo);
 
 	}
 	
@@ -297,7 +292,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Check content type
 		if (!isset($_SERVER['CONTENT_TYPE'])){
-			return new Response(400, "Bad Request: You must specify content-type.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400001,
+				"message"=>"Bad Request: You must specify a content-type header."
+			]]);
 			
 		//JSON	
 		} else if ( $_SERVER['CONTENT_TYPE']!=="application/json" || $_SERVER['CONTENT_TYPE']!=="text/plain" ){
@@ -306,23 +304,35 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 		//All others	
 		} else {
-			return new Response(415);
+			return new Response(415, ["SWDAPI-Error"=>[
+				"code"=>415001,
+				"message"=>"The content-type you requested is not supported."
+			]]);
 		}
 		
 		//Check if input was decoded correctly
 		if ($input===null){
-			return new Response(400, "Bad Request: No data was sent or it was malformed.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400002,
+				"message"=>"Bad Request: No data was sent or it was malformed."
+			]]);
 		}
 		
 		//Look for method
 		if (!isset($input['method'])){
-			return new Response(400, "Bad Request: Please specify a method.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400003,
+				"message"=>"Bad Request: Please specify a method."
+			]]);
 		}
 		
 		if (is_string($input['method']) && strlen($input['method'])<100){
 			$method = $input['method'];
 		} else {
-			return new Response(400, "Bad Request: The method you specified was malformed.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400004,
+				"message"=>"Bad Request: The method you specified was malformed."
+			]]);
 		}
 		
 		//Look for meta
@@ -363,36 +373,69 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 
 		//Check exipry data exists
 		if (!isset($meta['valid']['from']) || !is_int($meta['valid']['from']) || !isset($meta['valid']['to']) || !is_int($meta['valid']['to'])){
-			return new Response(400, "Bad Request: You must specify valid meta.valid.from and meta.valid.to values (integers).");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400005,
+				"message"=>"Bad Request: You must specify valid meta.valid.from and meta.valid.to values (integers)."
+			]]);
 		}
 
 		//Check expiry data
 		if ($meta['valid']['from']>time()){
-			return new Response(400, "Bad Request: meta.valid.from is in the future. Check your system time.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400006,
+				"message"=>"Bad Request: meta.valid.from is in the future. Check your system time."
+			]]);
+		}
+		if ($meta['valid']['from']<time()-(60*2)){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400007,
+				"message"=>"Bad Request: meta.valid.from is too far in the past. Check your system time."
+			]]);
 		}
 		if ($meta['valid']['to']<time()){
-			return new Response(400, "Bad Request: meta.valid.to is in the past.".$meta['valid']['to']);
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400008,
+				"message"=>"Bad Request: meta.valid.to is in the past. Check your system time."
+			]]);
+		}
+		if ($meta['valid']['to']>time()+(60*2)){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400009,
+				"message"=>"Bad Request: meta.valid.to is too far in the future. Check your system time."
+			]]);
 		}
 		
 		
 		//Check nonce exists
 		if (!isset($meta['nonce'])){
-			return new Response(400, "Bad Request: You must specify a meta.nonce");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400010,
+				"message"=>"Bad Request: You must specify a meta.nonce"
+			]]);
 		}
 		
 		//Check nonce format
 		if (strlen($meta['nonce'])!=10 || preg_match("/[^0-9a-zA-Z]/", $meta['nonce'])!==0){
-			return new Response(400, "Bad Request: The nonce you specified is an invalid format.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400011,
+				"message"=>"Bad Request: The nonce you specified is an invalid format."
+			]]);
 		}
 		
 		//Check nonce is unique (by attempting to store it)
 		if ($this->_registerNonce($meta['nonce'], $meta['valid']['to'])===false){
-			return new Response(400, "Bad Request: The nonce you specified has already been used.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400012,
+				"message"=>"Bad Request: The nonce you specified has already been used."
+			]]);
 		}
 		
 		//Check signature exists
 		if (!isset($meta['signature'])){
-			return new Response(400, "Bad Request: This request has not been signed (meta.signature).");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400013,
+				"message"=>"Bad Request: This request has not been signed (meta.signature)."
+			]]);
 		}
 		
 		return true;
@@ -440,7 +483,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$keyEnc = hash("sha256", $text.$keyPlain);
 		
 		if ($oldKey!==$keyEnc){
-			return new Response(400, "Bad Request: The signature (meta.signature) didn't match.");
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400014,
+				"message"=>"Bad Request: The signature (meta.signature) didn't match."
+			]]);
 		}
 		
 		return true;
@@ -456,18 +502,6 @@ class Response {
 	 public function __construct($status=200, $data=null) {
 		 $this->status = $status;
 		 $this->data = $data;
-		 
-		 if ($status===404 && $data===null){
-		 	$this->data = "Requested method was not found.";
-		 }
-		 
-		 if ($status===403 && $data===null){
-		 	$this->data = "Access to the requested resource was denied.";
-		 }
-		 
-		 if ($status===415 && $data===null){
-		 	$this->data = "Unsupported Media Type";
-		 }		 
 	 }
 	 
 	 public function sendHttpResponse(){

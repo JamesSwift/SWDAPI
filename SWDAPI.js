@@ -69,7 +69,7 @@ var swdapi = swdapi || function(URI, config={}){
 			client = pub.getClientData();
 			
 		//Client
-		if (clientVerified===true && client.id!==undefined && client.secret!==undefined){
+		if (client.id!==undefined && client.secret!==undefined){
 			meta.client = {"id":client.id};
 		}
 		

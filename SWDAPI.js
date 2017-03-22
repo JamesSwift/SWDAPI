@@ -25,16 +25,20 @@ var swdapi = swdapi || function(URI, config={}){
         pub = { 
 	        "request": request,
 	        "serverDate": getServerDate,
-	        "getClientData": (config['getClientData']!==undefined ? config['getClientData'] : getClientData_Default),
-	        "setClientData": (config['setClientData']!==undefined ? config['setClientData'] : setClientData_Default),
+	        "registerClient": registerClient,
+	        "fetchClientData": (config['fetchClientData']!==undefined ? config['fetchClientData'] : fetchClientData_Default),
+	        "storeClientData": (config['storeClientData']!==undefined ? config['storeClientData'] : storeClientData_Default),
     	};
     
 	//Check if any client info was passed
-	if (config.client!==undefined){
+	if (config.setClientName!==undefined && typeof config.setClientName === "string"){
 		
-		//Save it
-		pub.setClientData(config.client);
-		
+		//Is it different from what we havse stored?
+		var tmpData = pub.fetchClientData();
+		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name!==config.setClientName){
+			//Register the new name
+			registerClient(config.client);
+		}
 	}
 
 	//If the serverTimestamp was specified use it
@@ -66,7 +70,7 @@ var swdapi = swdapi || function(URI, config={}){
 		
 		var meta = {},
 			sT = getServerDate().getTime(),
-			client = pub.getClientData();
+			client = pub.fetchClientData();
 			
 		//Client
 		if (client.id!==undefined && client.secret!==undefined){
@@ -90,7 +94,7 @@ var swdapi = swdapi || function(URI, config={}){
 	
 	function signRequest(method, meta, data){
 		
-		var text, keyPlain, keyEnc, client = pub.getClientData();
+		var text, keyPlain, keyEnc, client = pub.fetchClientData();
 		
 		text = JSON.stringify([method, meta, data]);
 		keyPlain = "swdapi";
@@ -111,23 +115,119 @@ var swdapi = swdapi || function(URI, config={}){
 		return keyEnc;
 	}
 	
-	function registerClient(callback){
+	function registerClient(name=null, callback=null){
 		
-		//Make a request to register/re-register the client
-		//Send what data we have, if it is incomplete we will be given a new client id and secret
-		request("swdapi/registerClient", pub.getClientData(),
-			function(){
-				//success
+		var currentData = pub.fetchClientData(),
+			sendData = {
+				"salt": (Math.random().toString(36)+'00000000000000000').slice(2, 10+2)
 			},
-			function(){
-				//fail
+			callbackHandler;
+		
+		//Set id if known
+		if (typeof currentData === "object" && currentData.id!==undefined){
+			sendData.id = currentData.id;
+		}
+		
+		//Hash/sign the id and secret (if known)
+		if (typeof currentData === "object" && currentData.id!==undefined && currentData.secret!==undefined ){
+			sendData.signature = forge_sha256("swdapi"+currentData.id+currentData.secret);
+		}
+		
+		//check whether to use new name or old (if it exists)
+		if (typeof name ==="string"){
+			sendData.name = name;
+		} else if (name!==null){
+			throw "Cannot register client. Argument 1 must be either a string or null.";
+		} else if (typeof currentData === "object" && currentData.name!==undefined){
+			sendData.name = currentData.name;
+		} else {
+			throw "Cannot register a client without a name. No name is stored and no name was passed to registerClient()";
+		}
+		
+		
+		//Make a request to register/confirm the client
+		//Send what data we have even if incomplete
+		//The server call will either return some data or us to 
+		//store or if we have an expired secret it will return 403
+		//(in which case we discard the old id-secret pair and request a new one)
+		
+		request("swdapi/registerClient", sendData,
+		
+			//Success handler
+			callbackHandler,
+	
+			//Failure handler
+			function(responseData){
+				//Check if this equest failed because our meta.signature was invalid
+				if (typeof responseData !== "object" || responseData['SWDAPI-Error']===undefined || responseData['SWDAPI-Error'].code!==1234){
+					throw "Could not register the client. An unexpected error occured.";
+				}
+				
+				//So, we only reach this point if the client id-secret pair was invalid (expired or corrupted)
+				console.log("The client id-secret pair stored on this device has either expired or is corrupt. Requesting a new one.");
+				
+				//Remove the invalid client id-secret pair identity
+				delete currentData.id;
+				delete currentData.secret;
+				pub.storeClientData({"name":sendData.name});
+				delete sendData.id;
+				delete sendData.signature;
+				
+				//Run a new request just specifying a client name and a salt value
+				//which will return a new id-secret pair for us to use
+				request("swdapi/registerClient", sendData, callbackHandler,
+				
+					//If it still fails, just throw an error and give up
+					function(){
+						throw "Could not register the client. An unexpected error occured.";
+					}
+					
+				);
 			}
 		);
+		
+		callbackHandler = function(responseData){
+			
+			var newClientData = {
+					"name": responseData.name,
+					"id": responseData.name,
+				},
+				ourSig;
+			
+			//Did we attempt the request as with a client signature?
+			
+			//Yes, so the server should have sent back a hash for us to compare and confirm it's identity
+			if (currentData.id!==undefined && currentData.secret!==undefined){
+				ourSig = forge_sha256("swdapi"+sendData.salt+sendData.id+currentData.secret);
+				if (responseData.signature === undefined || ourSig!==responseData.signature){
+					throw	"Failed to confirm the client id. " + 
+							"The signature returned by the server doesn't match ours. " +
+							"This should be impossible without a man in the middle.";
+				}
+				
+			
+			//No, so we should be getting a new secret back	
+			} else {
+				if (responseData.secret!==undefined){
+					newClientData.secret = responseData.secret;
+				}
+			}
+			
+			
+			//Store the new state
+			pub.storeClientData(newClientData);
+			console.log("New client registered successfully:" + sendData.name);
+			
+			//Call the callback
+			if (typeof callback === "function"){
+				callback();
+			}
+		};
 	}
 	
-	function getClientData_Default(){
+	function fetchClientData_Default(){
 		if (!storageAvailable("localStorage")){
-			throw "Unable to access localStorage API. You must define your own getClientData and setClientData handlers.";
+			throw "Unable to access localStorage API. You must define your own fetchClientData and storeClientData handlers.";
 		}
 		var client = {};
 		if (window.localStorage.getItem("client-id")!==null){
@@ -143,9 +243,9 @@ var swdapi = swdapi || function(URI, config={}){
 		return client;
 	}
 	
-	function setClientData_Default(data){
+	function storeClientData_Default(data){
 		if (!storageAvailable("localStorage")){
-			throw "Unable to access localStorage API. You must define your own getClientData and setClientData handlers.";
+			throw "Unable to access localStorage API. You must define your own fetchClientData and storeClientData handlers.";
 		}
 		if (data.id!==undefined){
 			window.localStorage.setItem("client-id", data.id);
@@ -158,6 +258,7 @@ var swdapi = swdapi || function(URI, config={}){
 		}
 		return true;
 	}
+	
 	function storageAvailable(type) {
 		try {
 			var storage = window[type],
@@ -197,7 +298,7 @@ var swdapi = swdapi || function(URI, config={}){
 			//OK - route response to callback
 			if (xmlhttp.status === 200) {
 			    if (typeof successCallback === "function"){
-			    	successCallback(response, method, data);
+			    	successCallback(response, method, data, xmlhttp);
 			    }
 			    return true;
 			  
@@ -236,13 +337,13 @@ var swdapi = swdapi || function(URI, config={}){
 			
 			//Should we re-run the request?
 			if (ttl>0){
-				pub.request(method, data, successCallback, failureCallback);
+				request(method, data, successCallback, failureCallback);
 				return true;
 			}
 			
-			//Call the user defined eror handler
+			//Call the user defined error handler
 		    if (typeof failureCallback === "function"){
-			    failureCallback(xmlhttp, method, data);
+			    failureCallback(response, method, data, xmlhttp);
 		    }
 
     	};

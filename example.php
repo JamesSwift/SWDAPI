@@ -22,7 +22,7 @@
             //such as "Front office", "Andrea's laptop"
             //If this information is unavailable, give it a name that helps idenitfy it in 
             //some way such as:
-            "client":{"name":"SWDAPI Test Client - " + navigator.userAgent}
+            "setClientName":"SWDAPI Test Client - " + navigator.userAgent
         
         }
     );

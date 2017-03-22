@@ -37,7 +37,7 @@ var swdapi = swdapi || function(URI, config={}){
 		var tmpData = pub.fetchClientData();
 		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name!==config.setClientName){
 			//Register the new name
-			registerClient(config.client);
+			registerClient(config.setClientName);
 		}
 	}
 
@@ -159,7 +159,7 @@ var swdapi = swdapi || function(URI, config={}){
 			//Failure handler
 			function(responseData){
 				//Check if this equest failed because our meta.signature was invalid
-				if (typeof responseData !== "object" || responseData['SWDAPI-Error']===undefined || responseData['SWDAPI-Error'].code!==1234){
+				if (typeof responseData !== "object" || responseData['SWDAPI-Error']===undefined || responseData['SWDAPI-Error'].code!==400014){
 					throw "Could not register the client. An unexpected error occured.";
 				}
 				

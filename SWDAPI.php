@@ -82,7 +82,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 
 		//Check we found a method
 		if (!isset($this->methods[$methodID])){
-			return new Response(404);
+			return new Response(403, ["SWDAPI-Error"=>[
+					"code"=>404001,
+					"message"=>"The method you requested could not be found."
+				]]);
 		}
 		
 		//Shorthand
@@ -469,13 +472,51 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 	}
 	
+	protected function _getClientSecret($id){
+		
+		//Make sure qe are connected to DB
+		$this->_connectDB();
+		
+		//Attempt to fetch id
+		$q = $this->_db->prepare("SELECT secret FROM clients WHERE id=:id");
+		$q->execute(["id"=>$id]);
+		$row = $q>fetch(PDO::FETCH_ASSOC);
+		
+		if (is_array($row)){
+			return $row['secret'];
+		}
+		
+		throw \Exception("Client does not exist.");
+			
+	}
+	
 	protected function _checkSignature($method, $meta, $data){
 		
 		$oldKey = $meta['signature'];
 		unset($meta['signature']);
 		
-		$text = json_encode([$method,$meta,$data]);
+		//Reconstruct the signature from our end
+		$text = json_encode([$method,$meta,$data], JSON_UNESCAPED_SLASHES);
 		$keyPlain = "swdapi";
+		
+		//Add the client signature if sent
+		if (isset($meta['client']['id'])){
+			
+			try {
+				//Fetch key
+				$clientSecret = $this->_getClientSecret();
+				//Add it to the hash
+				$keyPlain+=$clientSecret;
+			} catch (\Exception $e){
+				
+				return new Response(403, ["SWDAPI-Error"=>[
+					"code"=>403002,
+					"message"=>"The meta.client.id you specified doesn't exist."
+				]]);
+			
+			}	
+			
+		}
 		
 		//Add user signature here
 		
@@ -510,7 +551,7 @@ class Response {
 	 	//Json
 	 	if (is_array($this->data)){
 	 		header('Content-Type: application/json');
-	 		print json_encode($this->data);
+	 		print json_encode($this->data, JSON_UNESCAPED_SLASHES);
 	 		
 	 	//Plain text
 	 	} else {

@@ -1,4 +1,4 @@
-var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
+var swdapi = swdapi || function(URI, config={}){
 	
 	///////////////////////////////
 	// Begin constructor
@@ -19,8 +19,7 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
     
     //Variable for this API instance
     var endpointURI = URI,
-    	clientVerified = false,
-        serverTimeOffset = null,
+        serverTimeOffset = 0,
         
         //Defined the public object
         pub = { 
@@ -37,38 +36,22 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
 		pub.setClientData(config.client);
 		
 	}
-	
-	//We need to find the time offset to the server so that we can
-	//set request expiry to a nice short time
-	
+
 	//If the serverTimestamp was specified use it
 	if (config['serverTimestamp']!==undefined){
 		
 		//Check that the supplied timestamp is correct format
 		if (Number.isInteger(config['serverTimestamp'])===true){
 			
-			//Compute difference between server and local time (roughly)
-			var st = new Date(config.serverTimestamp*1000);
-			serverTimeOffset = st.getTime() - Date.now();
-			console.log("Server time offset from us: "+serverTimeOffset+"ms");
+			storeServerTimeOffset(config['serverTimestamp']);
 			
-			//Fire up the Callback
-			if (typeof onloadCallback === "function"){
-			    setTimeout(onloadCallback, 10);
-			}
 		} else {
-			console.log("Supplied serverTimestamp was an invalid format. Must be positive integer. Querying server for time...");
+			console.log("Supplied serverTimestamp was an invalid format. Must be positive integer. The server time will be noted on the next request instead.");
 		}
 	}
 	
-	//If not, send a request to API to find server time
-	if (serverTimeOffset===null) {
-        findServerTimeOffset(onloadCallback);
-	} 
-		
 
     //Return the public object
-    
     return pub;
     
     // End constructor
@@ -126,6 +109,20 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
 		keyEnc = forge_sha256(text+keyPlain);
 		
 		return keyEnc;
+	}
+	
+	function registerClient(callback){
+		
+		//Make a request to register/re-register the client
+		//Send what data we have, if it is incomplete we will be given a new client id and secret
+		request("swdapi/registerClient", pub.getClientData(),
+			function(){
+				//success
+			},
+			function(){
+				//fail
+			}
+		);
 	}
 	
 	function getClientData_Default(){
@@ -214,26 +211,13 @@ var swdapi = swdapi || function(URI, onloadCallback=null, config={}){
     	return true;
     }
     
-    function findServerTimeOffset(onloadCallback){
+    function storeServerTimeOffset(timestamp){
         
-        var serverDate, xmlhttp = new XMLHttpRequest();
-            
-        xmlhttp.open('HEAD', endpointURI);
-        xmlhttp.onreadystatechange = function() {
-			if (xmlhttp.readyState === xmlhttp.DONE) {
-			   
-			    serverDate = new Date(xmlhttp.getResponseHeader("Date")); 
-				serverTimeOffset = serverDate.getTime() - Date.now();
-				console.log("Server time offset from us: "+serverTimeOffset+"ms");
-				
-				if (typeof onloadCallback === "function"){
-				    onloadCallback();
-				}
-			}
-    	};
-    	xmlhttp.send();
-    	
-    };
+	    var serverDate = new Date(timestamp); 
+		serverTimeOffset = serverDate.getTime() - Date.now();
+		console.log("Server time offset from us: "+serverTimeOffset+"ms");
+
+    }
     
     function getServerDate(){
         return new Date(Date.now()+serverTimeOffset);

@@ -10,6 +10,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected $methods;
 	protected $_securityFallback;
 	protected $_db;
+	protected $_predefinedMethods;
 	
 	//////////////////////////////////////////////////////////////////////
 	// Methods required by PHPBootstrap
@@ -17,7 +18,12 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	public function loadDefaultConfig(){
 		$this->settings = [];
 		$this->methods = [];
-		$_securityFallback = null;
+		$this->_securityFallback = null;
+		$this->_predefinedMethods = [
+		"swdapi/registerClient"=> [
+			"call"=>[$this, "_registerClient"]
+		]
+	];
 	}
 	
 	protected function _sanitizeConfig($config){
@@ -80,16 +86,21 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 	public function request($methodID, $data=null, $authInfo=null){
 
-		//Check we found a method
-		if (!isset($this->methods[$methodID])){
-			return new Response(403, ["SWDAPI-Error"=>[
+		//Look in api predefined methods
+		if (isset($this->_predefinedMethods[$methodID])){
+			$method = $this->_predefinedMethods[$methodID];
+		
+		//Look in user defined methods	
+		} else if (isset($this->methods[$methodID])){
+			$method = $this->methods[$methodID];
+			
+		//Return 404
+		} else {
+			return new Response(404, ["SWDAPI-Error"=>[
 					"code"=>404001,
 					"message"=>"The method you requested could not be found."
 				]]);
 		}
-		
-		//Shorthand
-		$method = $this->methods[$methodID];
 		
 		//Was $authInfo passed?
 		if ($authInfo===null){
@@ -368,7 +379,16 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//todo
 		
 		//Make request
-		return $this->request($method, $data);
+		$response = $this->request($method, $data);
+		
+		if (!($response instanceof Response)){
+			return new Response(500, ["SWDAPI-Error"=>[
+				"code"=>500001,
+				"message"=>"Internal server error: The method your requested returned an invalid datatype."
+			]]);
+		}
+		
+		return $response;
 		
 	}
 	
@@ -472,21 +492,21 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 	}
 	
-	protected function _getClientSecret($id){
+	protected function _getClientData($id){
 		
 		//Make sure qe are connected to DB
 		$this->_connectDB();
 		
 		//Attempt to fetch id
-		$q = $this->_db->prepare("SELECT secret FROM clients WHERE id=:id");
+		$q = $this->_db->prepare("SELECT * FROM clients WHERE id=:id");
 		$q->execute(["id"=>$id]);
-		$row = $q>fetch(PDO::FETCH_ASSOC);
+		$row = $q->fetch(\PDO::FETCH_ASSOC);
 		
 		if (is_array($row)){
-			return $row['secret'];
+			return $row;
 		}
 		
-		throw \Exception("Client does not exist.");
+		throw new \Exception("Client does not exist.");
 			
 	}
 	
@@ -504,9 +524,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 			try {
 				//Fetch key
-				$clientSecret = $this->_getClientSecret();
+				$clientData = $this->_getClientData($meta['client']['id']);
 				//Add it to the hash
-				$keyPlain+=$clientSecret;
+				$keyPlain.=$clientData['secret'];
 			} catch (\Exception $e){
 				
 				return new Response(403, ["SWDAPI-Error"=>[
@@ -532,6 +552,116 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		return true;
 		
+	}
+	
+	///////////////////////////////////////////
+	//Predefined methods
+	
+	protected function _registerClient($data, $authInfo){
+		
+		//Make sure qe are connected to DB
+		$this->_connectDB();
+			
+		$clientData = null;
+		$action = "create-new";;
+		
+		//Validate data
+		if (!isset($data['name']) || !isset($data['salt'])){
+			return new Response(403, ["SWDAPI-Error"=>[
+				"code"=>403003,
+				"message"=>"Bad Request: Data sent to swdapi/registerClient was malformed or incomplete."
+			]]);
+		}
+		
+		//See if client exists
+		if (isset($data['id'])){
+			try {
+				$clientData = $this->_getClientData($data['id']);
+				
+				//Did they try to sign the request?
+				if (isset($data['signature'])){
+					//Did it work?
+					if (hash("sha256", "swdapi".$clientData['id'].$clientData['secret'])!==$data['signature']){
+						//No
+						//If this is a good client, they wouldn't have got this far
+						//(as if they have a id-secret pair they should be signing the request with it)
+						//Tell them off
+						return new Response(403, ["SWDAPI-Error"=>[
+							"code"=>403004,
+							"message"=>"Bad Request: You tried to test a client signature without signing the request with it!"
+						]]);
+						
+					//yes
+					}
+					$action = "log-name";
+				//No signature, send them a new id-secret
+				} else {
+					$action="create-new";
+				}
+				
+			//No id? Send them a new id-secret
+			} catch (\Exception $e){
+				$action="create-new";
+			}
+		}
+		
+		$response = [];
+		
+		//Log the name and return name and id
+		if ($action==="log-name"){
+
+			try {
+				//Attempt to store new name
+				$q = $this->_db->prepare("UPDATE clients SET name=:name WHERE id=:id");
+				$q->execute([
+						"name"=>substr($data['name'],0,140),
+						"id"=>$data['id']
+				]);
+				
+				//Create response
+				$response['name'] = $clientData['name'];
+				$response['id'] = $clientData['id'];
+				$response['signature'] = hash("sha256", "swdapi".$data['salt'].$clientData['id'].$clientData['secret']);
+				
+			} catch (\Exception $e){
+				return new Response(500, ["SWDAPI-Error"=>[
+					"code"=>500002,
+					"message"=>"Internal server error: Error storing new client name."
+				]]);
+			}
+			
+		}
+		
+		if ($action==="create-new"){
+			
+			try {
+				//Attempt to create new client
+				$q = $this->_db->prepare("INSERT INTO clients SET name=:name, secret=:secret");
+				$secret = hash("sha256", "swdapi".mt_rand().$data['salt'].mt_rand().mt_rand());
+				$r = $q->execute([
+						"name"=>substr($data['name'],0,140),
+						"secret"=>$secret
+				]);
+				
+				//Create response
+				$response['name'] = $clientData['name'];
+				$response['id'] = $this->_db->lastInsertId();
+				$response['secret'] = $secret;
+				
+				//Create signature
+				$response['signature'] = hash("sha256", "swdapi".$data['salt'].$clientData['id'].$clientData['secret']);
+				
+			 } catch (\Exception $e){
+				return new Response(500, ["SWDAPI-Error"=>[
+					"code"=>500003,
+					"message"=>"Internal server error: Error creating new client."
+				]]);
+			}
+			
+		}
+		
+		//Return the data
+		return new Response(200, $response);
 	}
 
 }

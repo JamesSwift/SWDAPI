@@ -144,53 +144,17 @@ var swdapi = swdapi || function(URI, config={}){
 			throw "Cannot register a client without a name. No name is stored and no name was passed to registerClient()";
 		}
 		
-		
-		//Make a request to register/confirm the client
-		//Send what data we have even if incomplete
-		//The server call will either return some data or us to 
-		//store or if we have an expired secret it will return 403
-		//(in which case we discard the old id-secret pair and request a new one)
-		
-		request("swdapi/registerClient", sendData,
-		
-			//Success handler
-			callbackHandler,
-	
-			//Failure handler
-			function(responseData){
-				//Check if this equest failed because our meta.signature was invalid
-				if (typeof responseData !== "object" || responseData['SWDAPI-Error']===undefined || responseData['SWDAPI-Error'].code!==400014){
-					throw "Could not register the client. An unexpected error occured.";
-				}
-				
-				//So, we only reach this point if the client id-secret pair was invalid (expired or corrupted)
-				console.log("The client id-secret pair stored on this device has either expired or is corrupt. Requesting a new one.");
-				
-				//Remove the invalid client id-secret pair identity
-				delete currentData.id;
-				delete currentData.secret;
-				pub.storeClientData({"name":sendData.name});
-				delete sendData.id;
-				delete sendData.signature;
-				
-				//Run a new request just specifying a client name and a salt value
-				//which will return a new id-secret pair for us to use
-				request("swdapi/registerClient", sendData, callbackHandler,
-				
-					//If it still fails, just throw an error and give up
-					function(){
-						throw "Could not register the client. An unexpected error occured.";
-					}
-					
-				);
-			}
-		);
-		
+		//////////////////
+		//Define a callback handler which will accept data from the server and store it locally
 		callbackHandler = function(responseData){
+			
+			if (typeof responseData !== "object" || responseData.id===undefined || responseData.name===undefined){
+				throw "Could not confirm registration of the client. An unexpected error occured.";
+			}
 			
 			var newClientData = {
 					"name": responseData.name,
-					"id": responseData.name,
+					"id": responseData.id,
 				},
 				ourSig;
 			
@@ -198,6 +162,8 @@ var swdapi = swdapi || function(URI, config={}){
 			
 			//Yes, so the server should have sent back a hash for us to compare and confirm it's identity
 			if (currentData.id!==undefined && currentData.secret!==undefined){
+				//Don't forget to store the current secret again
+				newClientData.secret = currentData.secret;
 				ourSig = forge_sha256("swdapi"+sendData.salt+sendData.id+currentData.secret);
 				if (responseData.signature === undefined || ourSig!==responseData.signature){
 					throw	"Failed to confirm the client id. " + 
@@ -216,13 +182,60 @@ var swdapi = swdapi || function(URI, config={}){
 			
 			//Store the new state
 			pub.storeClientData(newClientData);
-			console.log("New client registered successfully:" + sendData.name);
+			console.log("New client registered successfully: " + sendData.name);
 			
 			//Call the callback
 			if (typeof callback === "function"){
 				callback();
 			}
 		};
+		///////////////////////
+		
+		//Make a request to register/confirm the client
+		//Send what data we have even if incomplete
+		//The server call will either return some data for us to 
+		//store or if we have an expired secret it will return 403
+		//(in which case we discard the old id-secret pair and request a new one)
+		
+		request("swdapi/registerClient", sendData,
+		
+			//Success handler
+			callbackHandler,
+	
+			//Failure handler
+			function(responseData){
+				
+				//Check if this equest failed because our meta.signature was invalid (or id not found)
+				if (typeof responseData !== "object" || responseData['SWDAPI-Error']===undefined || !(responseData['SWDAPI-Error'].code===400014 || responseData['SWDAPI-Error'].code===403002)){
+					throw "Could not register the client. An unexpected error occured.";
+				}
+				
+				//So, we only reach this point if the client id-secret pair was invalid (expired or corrupted)
+				console.log("The client id-secret pair stored on this device has either expired or is corrupt. Requesting a new one.");
+				
+				//Remove the invalid client id-secret pair identity
+				delete currentData.id;
+				delete currentData.secret;
+				pub.storeClientData({
+					"name":sendData.name,
+				});
+				delete sendData.id;
+				delete sendData.signature;
+				
+				//Run a new request just specifying a client name and a salt value
+				//which will return a new id-secret pair for us to use
+				request("swdapi/registerClient", sendData, callbackHandler,
+				
+					//If it still fails, just throw an error and give up
+					function(){
+						throw "Could not register the client. An unexpected error occured.";
+					}
+					
+				);
+			}
+		);
+		
+
 	}
 	
 	function fetchClientData_Default(){
@@ -249,12 +262,18 @@ var swdapi = swdapi || function(URI, config={}){
 		}
 		if (data.id!==undefined){
 			window.localStorage.setItem("client-id", data.id);
+		} else {
+			window.localStorage.removeItem("client-id");
 		}
 		if (data.secret!==undefined){
 			window.localStorage.setItem("client-secret", data.secret);
+		} else {
+			window.localStorage.removeItem("client-secret");
 		}
 		if (data.name!==undefined){
 			window.localStorage.setItem("client-name", data.name);
+		} else {
+			window.localStorage.removeItem("client-name");
 		}
 		return true;
 	}
@@ -324,8 +343,19 @@ var swdapi = swdapi || function(URI, config={}){
 					//Reset serverTimeOffset with date supplied by this request
 					storeServerTimeOffset(xmlhttp.getResponseHeader("date"));
 					
-					
-				//We don't recover frrm this error
+				//Invalid client id or failed signature
+				} else if (code==400014 || code==403002){
+					//Warn the developer (as changing client id automatically will de-authorize all connected accounts)
+					console.log(
+						"SWDAPI: An api request failed because the server reported that this device's client id-secret pair are invalid. "+
+						"The device can obtain a new id-secret pair easily by calling registerClient() on an active instance."+
+						"This has not been done automatically as obtaining a new client id will require any users authenticated with this device to re-authenticate which may be undesirable if you are running a device with many users."+
+						"You may wish to investigate your data store to see why the client is no longer being recognized and restore the original ID if possible."
+					);
+					//Don't retry
+					ttl = 0;
+				
+				//We don't recover from this error
 				} else {
 					ttl = 0;
 				}

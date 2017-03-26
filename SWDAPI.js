@@ -58,7 +58,7 @@ var swdapi = swdapi || function(URI, config){
 		
 		//Is it different from what we have stored?
 		var tmpData = fetchClientData();
-		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name!==config.setClientName){
+		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name!==config.setClientName.substring(0,140)){
 			//Register the new name
 			registerClient(config.setClientName);
 		}
@@ -161,7 +161,7 @@ var swdapi = swdapi || function(URI, config){
 		
 		//check whether to use new name or old (if it exists)
 		if (typeof name ==="string"){
-			sendData.name = name;
+			sendData.name = name.substring(0,140);
 		} else if (name!==null){
 			throw "Cannot register client. Argument 1 must be either a string or null.";
 		} else if (typeof currentData === "object" && currentData.name!==undefined){

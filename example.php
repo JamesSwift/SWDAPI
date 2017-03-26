@@ -1,5 +1,5 @@
 <script type="text/javascript" src="submodules/forge-sha256/build/forge-sha256.min.js"></script>
-<script type="text/javascript" src="SWDAPI.js"></script>
+<script type="text/javascript" src="SWDAPI.min.js"></script>
 <script type="text/javascript">
     
     //Create api instance

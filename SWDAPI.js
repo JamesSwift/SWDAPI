@@ -1,4 +1,10 @@
-var swdapi = swdapi || function(URI, config={}){
+var swdapi = swdapi || function(URI, config){
+	
+	function defaultFor(arg, val) {
+		return typeof arg !== 'undefined' ? arg : val;
+	}
+	
+	config = defaultFor(config, {});
 	
 	///////////////////////////////
 	// Begin constructor
@@ -115,7 +121,10 @@ var swdapi = swdapi || function(URI, config={}){
 		return keyEnc;
 	}
 	
-	function registerClient(name=null, callback=null){
+	function registerClient(name, callback){
+		
+		name		= defaultFor(name, null);
+		callback	= defaultFor(callback, null);
 		
 		var currentData = pub.fetchClientData(),
 			sendData = {
@@ -291,7 +300,9 @@ var swdapi = swdapi || function(URI, config={}){
 		}
 	}
 	
-	function request(method, data, successCallback, failureCallback = null){
+	function request(method, data, successCallback, failureCallback){
+		
+		failureCallback	= defaultFor(failureCallback, null);
 	
     	var xmlhttp = new XMLHttpRequest(),
     		meta = null,

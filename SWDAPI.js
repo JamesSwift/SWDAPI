@@ -11,36 +11,53 @@ var swdapi = swdapi || function(URI, config){
 	
 	//Test that needed components exist
 	if (XMLHttpRequest===undefined){
-		throw "SWDAPI: Required component 'XMLHttpRequest' not defined."
+		throw "SWDAPI: Required component 'XMLHttpRequest' not defined.";
 	}
 	if (Date.now===undefined){
-		throw "SWDAPI: Required component 'Date.now' not defined."
+		throw "SWDAPI: Required component 'Date.now' not defined.";
 	}
 	if (Number.isInteger===undefined){
-		throw "SWDAPI: Required component 'Number.isInteger' not defined."
+		throw "SWDAPI: Required component 'Number.isInteger' not defined.";
 	}
+	if (console.log===undefined){
+		throw "SWDAPI: Required component 'console.log' not defined.";
+	}	
 	if (forge_sha256===undefined){
-		throw "SWDAPI: Required component 'forge_sha256' not defined. Did you forget to include it?"
+		throw "SWDAPI: Required component 'forge_sha256' not defined. Did you forget to include it?";
 	}
     
     //Variable for this API instance
     var endpointURI = URI,
         serverTimeOffset = 0,
+        fetchClientData = (typeof config['fetchClientData']==="function" ? config['fetchClientData'] : fetchClientData_Default),
+        storeClientData = (typeof config['storeClientData']==="function" ? config['storeClientData'] : storeClientData_Default),
         
         //Defined the public object
         pub = { 
 	        "request": request,
 	        "serverDate": getServerDate,
 	        "registerClient": registerClient,
-	        "fetchClientData": (config['fetchClientData']!==undefined ? config['fetchClientData'] : fetchClientData_Default),
-	        "storeClientData": (config['storeClientData']!==undefined ? config['storeClientData'] : storeClientData_Default),
+	        "setFetchClientDataHandler": function(handler){
+	        	if (typeof handler === "function"){
+	        		fetchClientData = handler;
+	        		return true;
+	        	}
+	        	throw "Could not store fetchClientData handler. Not a callable function.";
+	        },
+	        "setStoreClientDataHandler": function(handler){
+	        	if (typeof handler === "function"){
+	        		storeClientData = handler;
+	        		return true;
+	        	}
+	        	throw "Could not store storeClientData handler. Not a callable function.";
+	        }
     	};
     
 	//Check if any client info was passed
 	if (config.setClientName!==undefined && typeof config.setClientName === "string"){
 		
 		//Is it different from what we havse stored?
-		var tmpData = pub.fetchClientData();
+		var tmpData = fetchClientData();
 		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name!==config.setClientName){
 			//Register the new name
 			registerClient(config.setClientName);
@@ -76,7 +93,7 @@ var swdapi = swdapi || function(URI, config){
 		
 		var meta = {},
 			sT = getServerDate().getTime(),
-			client = pub.fetchClientData();
+			client = fetchClientData();
 			
 		//Client
 		if (client.id!==undefined && client.secret!==undefined){
@@ -100,7 +117,7 @@ var swdapi = swdapi || function(URI, config){
 	
 	function signRequest(method, meta, data){
 		
-		var text, keyPlain, keyEnc, client = pub.fetchClientData();
+		var text, keyPlain, keyEnc, client = fetchClientData();
 		
 		text = JSON.stringify([method, meta, data]);
 		keyPlain = "swdapi";
@@ -126,7 +143,7 @@ var swdapi = swdapi || function(URI, config){
 		name		= defaultFor(name, null);
 		callback	= defaultFor(callback, null);
 		
-		var currentData = pub.fetchClientData(),
+		var currentData = fetchClientData(),
 			sendData = {
 				"salt": (Math.random().toString(36)+'00000000000000000').slice(2, 10+2)
 			},
@@ -190,7 +207,7 @@ var swdapi = swdapi || function(URI, config){
 			
 			
 			//Store the new state
-			pub.storeClientData(newClientData);
+			storeClientData(newClientData);
 			console.log("New client registered successfully: " + sendData.name);
 			
 			//Call the callback
@@ -225,7 +242,7 @@ var swdapi = swdapi || function(URI, config){
 				//Remove the invalid client id-secret pair identity
 				delete currentData.id;
 				delete currentData.secret;
-				pub.storeClientData({
+				storeClientData({
 					"name":sendData.name,
 				});
 				delete sendData.id;

@@ -605,6 +605,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			}
 		}
 		
+		$name = substr($data['name'],0,140);
 		$response = [];
 		
 		//Log the name and return name and id
@@ -614,12 +615,12 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				//Attempt to store new name
 				$q = $this->_db->prepare("UPDATE clients SET name=:name WHERE id=:id");
 				$q->execute([
-						"name"=>substr($data['name'],0,140),
+						"name"=>$name,
 						"id"=>$data['id']
 				]);
 				
 				//Create response
-				$response['name'] = $clientData['name'];
+				$response['name'] = $name;
 				$response['id'] = $clientData['id'];
 				$response['signature'] = hash("sha256", "swdapi".$data['salt'].$clientData['id'].$clientData['secret']);
 				
@@ -636,8 +637,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 			//Sanitize the data
 			$secret = hash("sha256", "swdapi".mt_rand().$data['salt'].mt_rand().mt_rand());
-			$name=substr($data['name'],0,140);
-			
+
 			try {
 				//Attempt to create new client
 				$q = $this->_db->prepare("INSERT INTO clients SET name=:name, secret=:secret");

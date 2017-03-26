@@ -56,7 +56,7 @@ var swdapi = swdapi || function(URI, config){
 	//Check if any client info was passed
 	if (config.setClientName!==undefined && typeof config.setClientName === "string"){
 		
-		//Is it different from what we havse stored?
+		//Is it different from what we have stored?
 		var tmpData = fetchClientData();
 		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name!==config.setClientName){
 			//Register the new name
@@ -208,7 +208,7 @@ var swdapi = swdapi || function(URI, config){
 			
 			//Store the new state
 			storeClientData(newClientData);
-			console.log("New client registered successfully: " + sendData.name);
+			console.log("New client registered successfully: " + newClientData.name);
 			
 			//Call the callback
 			if (typeof callback === "function"){

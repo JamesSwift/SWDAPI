@@ -2,7 +2,7 @@
 
 namespace JamesSwift\SWDAPI;
 
-require "submodules/PHPBootstrap/PHPBootstrap.php";
+require_once __DIR__."/submodules/PHPBootstrap/PHPBootstrap.php";
 
 class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	

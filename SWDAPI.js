@@ -33,7 +33,8 @@ var swdapi = swdapi || function(URI, config){
         storeClientData = (typeof config['storeClientData']==="function" ? config['storeClientData'] : storeClientData_Default),
         
         //Defined the public object
-        pub = { 
+        pub = {
+        	"authenticate": authenticate,
 	        "request": request,
 	        "serverDate": getServerDate,
 	        "registerClient": registerClient,
@@ -89,7 +90,7 @@ var swdapi = swdapi || function(URI, config){
     //////////////////////////////////////////
     //Define private methods
         
-    function generateMeta(method, data){
+    function generateMeta(method, data, auth){
 		
 		var meta = {},
 			sT = getServerDate().getTime(),
@@ -110,16 +111,16 @@ var swdapi = swdapi || function(URI, config){
 		};
 		
 		//Sign request
-		meta.signature = signRequest(method, meta, data);
+		meta.signature = signRequest(method, meta, data, auth);
 		
 		return meta;
 	}
 	
-	function signRequest(method, meta, data){
+	function signRequest(method, meta, data, auth){
 		
 		var text, keyPlain, keyEnc, client = fetchClientData();
 		
-		text = JSON.stringify([method, meta, data]);
+		text = JSON.stringify([method, meta, data, auth]);
 		keyPlain = "swdapi";
 		
 		//Include client secret in hmac key if registered
@@ -136,6 +137,25 @@ var swdapi = swdapi || function(URI, config){
 		keyEnc = forge_sha256(text+keyPlain);
 		
 		return keyEnc;
+	}
+	
+	
+	//Attempts to "log-in" and fetch user session token
+	//
+	// Expiry is when the token definitely is invalidated (in seconds form now)
+	// Timeout is the amount of seconds of inactivity when the server will invalidate the token (in seconds form now)
+	//
+	// Returns an array []
+	//	type	= string "session" - to diferentiate from an application pass
+	//  uid 	= int - the id of the user account
+	//	tid		= int - the id of the session token
+	//  token	= string 64 - the token itself
+	// ]
+	function requestSessionToken(user, pass, requestExpiry, requestTimeout, expiryCallback){
+		
+		requestExpiry	= defaultFor(requestExpiry, 60*60*24);
+		requestTimeout	= defaultFor(requestTimeout, 60*60*12);
+		expiryCallback	= defaultFor(expiryCallback, null);
 	}
 	
 	function registerClient(name, callback){
@@ -250,7 +270,7 @@ var swdapi = swdapi || function(URI, config){
 				
 				//Run a new request just specifying a client name and a salt value
 				//which will return a new id-secret pair for us to use
-				request("swdapi/registerClient", sendData, callbackHandler,
+				request("swdapi/registerClient", sendData, null, callbackHandler,
 				
 					//If it still fails, just throw an error and give up
 					function(){
@@ -317,8 +337,10 @@ var swdapi = swdapi || function(URI, config){
 		}
 	}
 	
-	function request(method, data, successCallback, failureCallback){
+	function request(method, data, auth, successCallback, failureCallback){
 		
+		auth			= defaultFor(auth, null);
+		successCallback	= defaultFor(successCallback, null);
 		failureCallback	= defaultFor(failureCallback, null);
 	
     	var xmlhttp = new XMLHttpRequest(),
@@ -326,7 +348,7 @@ var swdapi = swdapi || function(URI, config){
     		ttl = 5;
     		
     	//Generate meta for this request (and sign it)
-    	meta = generateMeta(method, data);
+    	meta = generateMeta(method, data, auth);
     	
     	xmlhttp.open("POST", endpointURI);
     	xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
@@ -373,7 +395,7 @@ var swdapi = swdapi || function(URI, config){
 					
 				//Invalid client id or failed signature
 				} else if (code==400014 || code==403002){
-					//Warn the developer (as changing client id automatically will de-authorize all connected accounts)
+					//Warn the developer (as changing client id automatically would de-authorize all connected accounts)
 					console.log(
 						"SWDAPI: An api request failed because the server reported that this device's client id-secret pair are invalid. "+
 						"The device can obtain a new id-secret pair easily by calling registerClient() on an active instance."+
@@ -395,13 +417,13 @@ var swdapi = swdapi || function(URI, config){
 			
 			//Should we re-run the request?
 			if (ttl>0){
-				request(method, data, successCallback, failureCallback);
+				request(method, data, auth, successCallback, failureCallback);
 				return true;
 			}
 			
 			//Call the user defined error handler
 		    if (typeof failureCallback === "function"){
-			    failureCallback(response, method, data, xmlhttp);
+			    failureCallback(response, method, data, auth, xmlhttp);
 		    }
 
     	};

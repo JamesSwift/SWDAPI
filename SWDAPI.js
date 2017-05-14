@@ -34,7 +34,7 @@ var swdapi = swdapi || function(URI, config){
         
         //Defined the public object
         pub = {
-        	"authenticate": authenticate,
+        	"getSessionToken": getSessionToken(),
 	        "request": request,
 	        "serverDate": getServerDate,
 	        "registerClient": registerClient,
@@ -120,7 +120,7 @@ var swdapi = swdapi || function(URI, config){
 		
 		var text, keyPlain, keyEnc, client = fetchClientData();
 		
-		text = JSON.stringify([method, meta, data, auth]);
+		text = JSON.stringify([method, meta, data]);
 		keyPlain = "swdapi";
 		
 		//Include client secret in hmac key if registered
@@ -151,11 +151,13 @@ var swdapi = swdapi || function(URI, config){
 	//	tid		= int - the id of the session token
 	//  token	= string 64 - the token itself
 	// ]
-	function requestSessionToken(user, pass, requestExpiry, requestTimeout, expiryCallback){
+	function getSessionToken(user, pass, requestExpiry, requestTimeout, expiryCallback){
 		
 		requestExpiry	= defaultFor(requestExpiry, 60*60*24);
 		requestTimeout	= defaultFor(requestTimeout, 60*60*12);
 		expiryCallback	= defaultFor(expiryCallback, null);
+		
+		//Todo
 	}
 	
 	function registerClient(name, callback){
@@ -243,7 +245,7 @@ var swdapi = swdapi || function(URI, config){
 		//store or if we have an expired secret it will return 403
 		//(in which case we discard the old id-secret pair and request a new one)
 		
-		request("swdapi/registerClient", sendData,
+		request("swdapi/registerClient", sendData, null,
 		
 			//Success handler
 			callbackHandler,

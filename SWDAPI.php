@@ -526,7 +526,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				//Fetch key
 				$clientData = $this->_getClientData($meta['client']['id']);
 				//Add it to the hash
-				$keyPlain.=$clientData['secret'];
+				$keyPlain.=$clientData['id'].$clientData['secret'];
 			} catch (\Exception $e){
 				
 				return new Response(403, ["SWDAPI-Error"=>[
@@ -538,7 +538,24 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 		}
 		
-		//Add user signature here
+		//Add authentication token if sent
+		if (isset($meta['token']['id']) && isset($meta['token']['uid'])){
+			
+			try {
+				//Fetch key
+				$tokenData = $this->_getTokenData($meta['token']['uid'], $meta['token']['id']);
+				//Add it to the hash
+				$keyPlain.=$tokenData['secret'];
+			} catch (\Exception $e){
+				
+				return new Response(403, ["SWDAPI-Error"=>[
+					"code"=>403002,
+					"message"=>"The meta.client.id you specified doesn't exist."
+				]]);
+			
+			}	
+			
+		}
 		
 		//Hash the text
 		$keyEnc = hash("sha256", $text.$keyPlain);

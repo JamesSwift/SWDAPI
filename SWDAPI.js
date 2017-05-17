@@ -1,5 +1,6 @@
 var swdapi = swdapi || function(URI, config){
 	
+	//Shims
 	function defaultFor(arg, val) {
 		return typeof arg !== 'undefined' ? arg : val;
 	}
@@ -29,12 +30,57 @@ var swdapi = swdapi || function(URI, config){
     //Variable for this API instance
     var endpointURI = URI,
         serverTimeOffset = 0,
+        defaultToken = null,
         fetchClientData = (typeof config['fetchClientData']==="function" ? config['fetchClientData'] : fetchClientData_Default),
         storeClientData = (typeof config['storeClientData']==="function" ? config['storeClientData'] : storeClientData_Default),
         
         //Defined the public object
         pub = {
-        	"getSessionToken": getSessionToken(),
+        	"login": function(user,pass,callback){
+        		callback = defaultFor(callback, null);
+        		return getAuthToken(user, pass, function(token){;
+        			//If login successfull, store the token for future use
+        			if (typeof token == "object"){
+        				defaultToken = token;
+        			}
+        			//Execute callback whether login successfull or not
+		        	if (typeof callback === "function"){
+		        		callback(token);
+	        		}        			
+        		});
+        	},
+        	"logout": function(callback){
+        		callback = defaultFor(callback, null);
+        		//Are we currently logged in?
+        		if (defaultToken!==null){
+        			console.log("Requesting logout.")
+        			request("swdapi/invalidateToken",{"id":defaultToken},handler,handler);
+        			defaultToken = null;
+        			return true;
+        			
+        		//Not logged in, just run callback with true
+        		} else {
+        			console.log("logout called when not logged in.")
+        		    if (typeof callback === "function"){
+		        		callback(true);
+	        		}
+	        		return true;
+        		}
+        		
+        		//Handle logout request
+        		var handler = function(response){
+        			if (response===true){
+        				console.log("Logout completed");
+        			} else {
+        				console.log("Logout failed");
+        			}
+    				if (typeof callback === "function"){
+		        		callback(response);
+        			}   
+        		}
+        		
+        	},
+        	"getAuthToken":getAuthToken(),
 	        "request": request,
 	        "serverDate": getServerDate,
 	        "registerClient": registerClient,
@@ -54,7 +100,7 @@ var swdapi = swdapi || function(URI, config){
 	        }
     	};
     
-	//Check if any client info was passed
+	//Check if any client info was passed to the constructor
 	if (config.setClientName!==undefined && typeof config.setClientName === "string"){
 		
 		//Is it different from what we have stored?
@@ -90,7 +136,7 @@ var swdapi = swdapi || function(URI, config){
     //////////////////////////////////////////
     //Define private methods
         
-    function generateMeta(method, data, auth){
+    function generateMeta(method, data, token){
 		
 		var meta = {},
 			sT = getServerDate().getTime(),
@@ -99,6 +145,14 @@ var swdapi = swdapi || function(URI, config){
 		//Client
 		if (client.id!==undefined && client.secret!==undefined){
 			meta.client = {"id":client.id};
+		}
+		
+		//User auth Token
+		if (token!==null && token.id!==undefined && token.uid!==undefined){
+			meta.token = {
+				"id":token.id,
+				"uid":token.uid
+			};
 		}
 		
 		//Nonce
@@ -111,12 +165,12 @@ var swdapi = swdapi || function(URI, config){
 		};
 		
 		//Sign request
-		meta.signature = signRequest(method, meta, data, auth);
+		meta.signature = signRequest(method, meta, data, token);
 		
 		return meta;
 	}
 	
-	function signRequest(method, meta, data, auth){
+	function signRequest(method, meta, data, token){
 		
 		var text, keyPlain, keyEnc, client = fetchClientData();
 		
@@ -125,12 +179,12 @@ var swdapi = swdapi || function(URI, config){
 		
 		//Include client secret in hmac key if registered
 		if (meta.client !==undefined && meta.client.id!==undefined && client.secret!==undefined){
-			keyPlain += client.secret;
+			keyPlain += client.id+client.secret;
 		}
 		
 		//Include user key and pin in hmac key
-		if (meta.user!==undefined){
-			//keyPlain += users[activeUser].sessionKey + users[activeUser].pin;
+		if (meta.token!==undefined && token.id!==undefined && token.secret!==undefined){
+			keyPlain += token.id+token.secret
 		}
 		
 		//Join the dots and hash
@@ -142,24 +196,40 @@ var swdapi = swdapi || function(URI, config){
 	
 	//Attempts to "log-in" and fetch user session token
 	//
-	// Expiry is when the token definitely is invalidated (in seconds form now)
-	// Timeout is the amount of seconds of inactivity when the server will invalidate the token (in seconds form now)
+	// Expiry is when the token definitely is invalidated (as a unix timestamp)
+	// Timeout is the amount of seconds of inactivity when the server will invalidate the token (in seconds from now)
 	//
 	// Returns an array []
-	//	type	= string "session" - to diferentiate from an application pass
-	//  uid 	= int - the id of the user account
-	//	tid		= int - the id of the session token
-	//  token	= string 64 - the token itself
+	//  uid 	= int - the id of the user account this token is for
+	//	id		= int - the id of the session token
+	//  secret	= string 64 - the secret key
+	//  expiry	= int - unixtime that this token expires
+	//  timeout = int - seconds of inactivity after which the token will expire
 	// ]
-	function getSessionToken(user, pass, requestExpiry, requestTimeout, expiryCallback){
+	
+	function getAuthToken(user, pass, callback, requestExpiry, requestTimeout){
 		
-		requestExpiry	= defaultFor(requestExpiry, 60*60*24);
-		requestTimeout	= defaultFor(requestTimeout, 60*60*12);
-		expiryCallback	= defaultFor(expiryCallback, null);
+		callback		= defaultFor(callback, null);
+		requestExpiry	= defaultFor(requestExpiry, null);
+		requestTimeout	= defaultFor(requestTimeout, null);
 		
 		//Todo
+		if (typeof callback === "function"){
+			callback(true);
+		}
+		
+		return true;
 	}
 	
+	function checkToken(token){
+		
+		//todo: check type and validity
+		return true;
+	}
+	
+	//Set or change the name of the client/terminal/device/whatever
+	//and get a unique id-sceret pair
+	//which should be stored semi-permenantly
 	function registerClient(name, callback){
 		
 		name		= defaultFor(name, null);
@@ -206,7 +276,7 @@ var swdapi = swdapi || function(URI, config){
 				},
 				ourSig;
 			
-			//Did we attempt the request as with a client signature?
+			//Did we attempt the request with a client signature?
 			
 			//Yes, so the server should have sent back a hash for us to compare and confirm it's identity
 			if (currentData.id!==undefined && currentData.secret!==undefined){
@@ -339,9 +409,9 @@ var swdapi = swdapi || function(URI, config){
 		}
 	}
 	
-	function request(method, data, auth, successCallback, failureCallback){
+	function request(method, data, successCallback, failureCallback, token){
 		
-		auth			= defaultFor(auth, null);
+		token			= defaultFor(token, defaultToken);
 		successCallback	= defaultFor(successCallback, null);
 		failureCallback	= defaultFor(failureCallback, null);
 	
@@ -349,8 +419,13 @@ var swdapi = swdapi || function(URI, config){
     		meta = null,
     		ttl = 5;
     		
+		//Validate "token" array
+		if (!checkToken(token)){
+			throw "The authentication token you passed is in an invalid format. Request not sent.";
+		}
+    		
     	//Generate meta for this request (and sign it)
-    	meta = generateMeta(method, data, auth);
+    	meta = generateMeta(method, data, token);
     	
     	xmlhttp.open("POST", endpointURI);
     	xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
@@ -399,10 +474,8 @@ var swdapi = swdapi || function(URI, config){
 				} else if (code==400014 || code==403002){
 					//Warn the developer (as changing client id automatically would de-authorize all connected accounts)
 					console.log(
-						"SWDAPI: An api request failed because the server reported that this device's client id-secret pair are invalid. "+
-						"The device can obtain a new id-secret pair easily by calling registerClient() on an active instance."+
-						"This has not been done automatically as obtaining a new client id will require any users authenticated with this device to re-authenticate which may be undesirable if you are running a device with many users."+
-						"You may wish to investigate your data store to see why the client is no longer being recognized and restore the original ID if possible."
+						"SWDAPI: An api request failed because the server reported that the request's signature was invalid."+
+						"This could be because the client id-secret pair you are using is invalid or has expired, the authentication token you are using has expired or is invalid or some other secret information embeded in the signature has changed on the server."
 					);
 					//Don't retry
 					ttl = 0;
@@ -419,13 +492,13 @@ var swdapi = swdapi || function(URI, config){
 			
 			//Should we re-run the request?
 			if (ttl>0){
-				request(method, data, auth, successCallback, failureCallback);
+				request(method, data, successCallback, failureCallback, token);
 				return true;
 			}
 			
 			//Call the user defined error handler
 		    if (typeof failureCallback === "function"){
-			    failureCallback(response, method, data, auth, xmlhttp);
+			    failureCallback(response, method, data, token, xmlhttp);
 		    }
 
     	};

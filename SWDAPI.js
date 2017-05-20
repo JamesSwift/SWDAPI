@@ -544,8 +544,9 @@ var swdapi = swdapi || function(URI, config) {
 				else if (code == 400014 || code == 403002) {
 					//Warn the developer (as changing client id automatically would de-authorize all connected accounts)
 					console.log(
-						"SWDAPI: An api request failed because the server reported that the request's signature was invalid." +
-						"This could be because the client id-secret pair you are using is invalid or has expired, the authentication token you are using has expired or is invalid or some other secret information embeded in the signature has changed on the server."
+						"SWDAPI: An api request failed because the server reported that the request's signature was invalid. " +
+						"This could be because the client id-secret pair you are using is invalid or has expired, the authentication token you are using has expired or is invalid or some other secret information embeded in the signature has changed on the server." +
+						"Please contact support. Clearing you browser cache and localStorage container will fix this problem but will require you to reauthenticate."
 					);
 					//Don't retry
 					ttl = 0;
@@ -571,6 +572,8 @@ var swdapi = swdapi || function(URI, config) {
 			//Call the user defined error handler
 			if (typeof failureCallback === "function") {
 				failureCallback(response, method, data, token, xmlhttp);
+			} else {
+				throw [response, method, data, token, xmlhttp];
 			}
 
 		};

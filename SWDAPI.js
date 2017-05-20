@@ -68,8 +68,6 @@ var swdapi = swdapi || function(URI, config) {
 
 		//Is it different from what we have stored?
 		var tmpData = fetchClientData();
-		console.log(tmpData.name);
-		console.log(config.setClientName.substring(0, 140));
 		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name !== config.setClientName.substring(0, 140)) {
 			//Register the new name
 			registerClient(config.setClientName);

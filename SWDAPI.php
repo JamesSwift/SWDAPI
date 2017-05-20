@@ -580,7 +580,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$this->_connectDB();
 			
 		$clientData = null;
-		$action = "create-new";;
+		
+		//BY default, assume we want to create a new client
+		$action = "create-new";
 		
 		//Validate data
 		if (!isset($data['name']) || !isset($data['salt'])){
@@ -590,33 +592,37 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			]]);
 		}
 		
-		//See if client exists
+		//See they already have a valid client id
 		if (isset($data['id'])){
 			try {
+				
+				//Fetch our copy including the pre-shared client secret
 				$clientData = $this->_getClientData($data['id']);
 				
 				//Did they try to sign the request?
 				if (isset($data['signature'])){
-					//Did it work?
-					if (hash("sha256", "swdapi".$clientData['id'].$clientData['secret'])!==$data['signature']){
-						//No
-						//If this is a good client, they wouldn't have got this far
-						//(as if they have a id-secret pair they should be signing the request with it)
-						//Tell them off
+					
+					//Recreate the signature and compare it
+					if (hash("sha256", "swdapi".$clientData['id'].$clientData['secret'])===$data['signature']){
+
+						//The signature matches, so they must have the secret too
+						$action = "log-name";
+					
+					} else {
+
+						//Their data is corrupt somehow or they are trying to guess the secret
 						return new Response(403, ["SWDAPI-Error"=>[
 							"code"=>403004,
-							"message"=>"Bad Request: You tried to test a client signature without signing the request with it!"
+							"message"=>"Bad Request: The client signature/hash you provided doesn't match. You client id-secret is corrupt in some way."
 						]]);
 						
-					//yes
 					}
-					$action = "log-name";
-				//No signature, send them a new id-secret
+				//No signature, send them a new id-secret as they have obviously lost their secret
 				} else {
 					$action="create-new";
 				}
 				
-			//No id? Send them a new id-secret
+			//No id or thier id has expired. Send them a new id-secret
 			} catch (\Exception $e){
 				$action="create-new";
 			}

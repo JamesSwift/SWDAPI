@@ -226,19 +226,29 @@ var swdapi = swdapi || function(URI, config) {
 
 	//Attempts to fetch user session token with supplied credentials
 	//
-	// Expiry is when the token definitely is invalidated (as a unix timestamp)
-	// Timeout is the amount of seconds of inactivity when the server will invalidate the token (in seconds from now)
+	// requestExpiry is when you wish the token to definitely be invalidated (as a unix timestamp)
+	// requestTimeout is the amount of seconds of inactivity you would like the server will invalidate the token after (in seconds from now)
 	//
-	// Returns an array []
+	// Your requested expiry and timeout may not be honoured by the server, always refer to the response
+	//
+	// On success it calls "callback" and passes an object [
 	//  uid 	= int - the id of the user account this token is for
 	//	id		= int - the id of the session token
 	//  secret	= string 64 - the secret key
 	//  expiry	= int - unixtime that this token expires
 	//  timeout = int - seconds of inactivity after which the token will expire
 	// ]
+	//
+	// On Failure it calls "callback" and passes an SWDAPI-Error object
+	//
+	// Test like this:
+	// if (reponse['SWDAPI-Error']===undefined){ //all good
+	
 
 	function getAuthToken(user, pass, callback, requestExpiry, requestTimeout) {
 
+		var clientData, data, successHandler, failureHandler;
+		
 		callback = defaultFor(callback, null);
 		requestExpiry = defaultFor(requestExpiry, null);
 		requestTimeout = defaultFor(requestTimeout, null);
@@ -257,7 +267,7 @@ var swdapi = swdapi || function(URI, config) {
 			throw "The password you specified is invalid. It must be a non-empty string.";
 		}
 		//Check length
-		if (user.length<5){
+		if (pass.length<5){
 			throw "The password you specified is too short";
 		}
 		
@@ -274,10 +284,45 @@ var swdapi = swdapi || function(URI, config) {
 			throw "The requestTimeout you requested for your user session is not a number or is less than one.";
 		}		
 		
-		if (typeof callback === "function") {
-			callback(true);
+		//Check we have registered a client
+		clientData = fetchClientData();
+		
+		if (typeof clientData !== "object" || clientData.id === undefined  || typeof clientData.id !== "string" || clientData.secret === undefined || typeof clientData.secret !== "string" ) {
+			throw "You cannot request an AuthToken without having a valid client to assign the token to.";
 		}
-
+		
+		//Build data to send
+		var salt=(Math.random().toString(36) + '00000000000000000').slice(2, 10 + 2);
+		data = {
+			"user":user,
+			"pass":pass,
+			"clientID":clientData.id,
+			"salt":salt,
+			"signature":forge_sha256(user+pass+salt+clientData.id+clientData.secret)
+		};
+		
+		//define Successful request
+		successHandler = function(response){
+			
+			if (typeof callback === "function") {
+				callback(response);
+			}
+		};
+		
+		//define Problem with request
+		failureHandler = function(response){
+			
+			if (typeof callback === "function") {
+				callback(response);
+			} else {
+				throw response;
+			}
+		};
+		
+		//Make request to server
+		request("swdapi/getAuthToken", data, successHandler, failureHandler, null);
+		
+		
 		return true;
 	}
 

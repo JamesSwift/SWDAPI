@@ -9,6 +9,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected $settings;
 	protected $methods;
 	protected $_securityFallback;
+	protected $_credentialVerifier;
 	protected $_db;
 	protected $_predefinedMethods;
 	
@@ -22,7 +23,11 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$this->_predefinedMethods = [
 		"swdapi/registerClient"=> [
 			"call"=>[$this, "_registerClient"]
-		]
+		],
+		"swdapi/getAuthToken"=> [
+			"call"=>[$this, "_getAuthToken"]
+		],
+		
 	];
 	}
 	
@@ -51,6 +56,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	public function registerSecurityFallback(callable $callback){
 		$this->_securityFallback = $callback;
+	}
+	
+	public function registerCredentialVerifier(callable $callback){
+		$this->_credentialVerifier = $callback;
 	}
 	
 	public function getConfig(){
@@ -688,6 +697,89 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Return the data
 		return new Response(200, $response);
+	}
+	
+	
+	
+	protected function _getAuthToken($data, $authInfo){
+		
+		//Check we have something configured to verify the credentials
+		if (!is_callable($this->_credentialVerifier)){
+			return new Response(500, ["SWDAPI-Error"=>[
+				"code"=>500004,
+				"message"=>"Internal server error: The api has not been configured to allow login with credentials. This request cannot be processed."
+			]]);
+		}
+		
+		//Check user was specified
+		if (!isset($data['user']) || !is_string($data['user']) || strlen($data['user'])<3){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400015,
+				"message"=>"Bad request: To receive an AuthToken you must specify a user (string, length >= 3)."
+			]]);
+		}
+		
+		//Check pass was specified
+		if (!isset($data['pass']) || !is_string($data['pass']) || strlen($data['pass'])<3){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400016,
+				"message"=>"Bad request: To receive an AuthToken you must specify a password (string, length >= 5)."
+			]]);
+		}
+		
+		//Check salt was specified
+		if (!isset($data['salt']) || !is_string($data['salt']) || strlen($data['salt'])<5){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400017,
+				"message"=>"Bad request: To receive an AuthToken you must specify a salt (string, length >= 5)."
+			]]);
+		}
+		
+		//Check client ID was specified
+		if (!isset($data['clientID']) || !is_string($data['clientID']) || strlen($data['clientID'])>10){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400018,
+				"message"=>"Bad request: To receive an AuthToken you must specify a clientID (string, length < 10)."
+			]]);
+		}
+		
+		//Check signature was specified
+		if (!isset($data['signature']) || !is_string($data['signature']) || strlen($data['signature'])!==64){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400019,
+				"message"=>"Bad request: To receive an AuthToken you must specify a signature (string, length = 64)."
+			]]);
+		}
+		
+		//Check clientID is valid
+		try {
+			$clientData = $this->_getClientData($data['clientID']);
+		} catch (\Exception $e){
+			return new Response(403, ["SWDAPI-Error"=>[
+				"code"=>403005,
+				"message"=>"Forbidden: The client ID you specified doesn't exist"
+			]]);
+		}
+			
+		//Reconstruct the signature
+		$newSig = hash("sha256", $data['user'].$data['pass'].$data['salt'].$data['clientID'].$clientData['secret']);
+		
+		//Compare the signature to our signature
+		if ($newSig!==$data['signature']){
+			return new Response(403, ["SWDAPI-Error"=>[
+				"code"=>403006,
+				"message"=>"Forbidden: The signature you sent doesn't match the data you sent and your clientID-secret."
+			]]);	
+		}
+
+		//to do
+		
+		//Construct the authkey
+		
+		//Store it
+		
+		//Return it
+		return new Response(200, $data);
 	}
 
 }

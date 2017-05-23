@@ -304,6 +304,9 @@ var swdapi = swdapi || function(URI, config) {
 		//define Successful request
 		successHandler = function(response){
 			
+			//Check signature with our salt in matches our secret data
+			
+			//Execute callback
 			if (typeof callback === "function") {
 				callback(response);
 			}

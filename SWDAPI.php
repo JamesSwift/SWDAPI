@@ -774,12 +774,29 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 
 		//to do
 		
-		//Construct the authkey
+		//Check credentials
+		$userDetails = $this->_credentialVerifier($user,$pass);
+		if ($userDetails===false || !is_array($userDetails) || !isset($userDetails['authorizedUser']) || !is_string($userDetails['authorizedUser'])){
+			
+		}
 		
-		//Store it
+		//Register a token (secret and id)
+		$tokenData = [];//todo
+		
+		//Construct the auth token
+		$token = [
+			"uid"=>$userDetails['authorizedUser'],
+			"id"=>$tokenData['id'],
+			"secret"=>$tokenData['secret'],
+			"expiry"=>$tokenData['expiry'],
+			"timeout"=>$tokenData['timeout'],
+		];
+		
+		//Create a singature of it
+		$signature = "";
 		
 		//Return it
-		return new Response(200, $data);
+		return new Response(200, ['token'=>$token, 'signature'=>$signature]);
 	}
 
 }

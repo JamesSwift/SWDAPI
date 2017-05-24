@@ -378,19 +378,18 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			return $metaCheck;
 		}
 		
-		//Create variable to sideload token data into
-		$token = null;
 		
 		//Check signature
-		$sigCheck = $this->_checkSignature($method, $meta, $data, $token);
+		$sigCheck = $this->_checkSignature($method, $meta, $data);
 		if ($sigCheck!==true){
 			return $sigCheck;
 		}
 		
+		
 		//Handle auth
 		$auth=null;
-		if ($token!==null && iiset($token['uid']) && is_string($token['uid'])){
-			$auth['authorizedUser']=$token['uid'];
+		if (isset($meta['token']['uid']) &&  is_string($meta['token']['uid'])){
+			$auth = ['authorizedUser'=>$meta['token']['uid']];
 		}
 		
 		//Make request
@@ -525,7 +524,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 	}
 	
-	protected function _checkSignature($method, $meta, $data, &$returnToken = null){
+	protected function _checkSignature($method, $meta, $data){
 		
 		$oldKey = $meta['signature'];
 		unset($meta['signature']);
@@ -573,6 +572,14 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 					return new Response(403, ["SWDAPI-Error"=>[
 						"code"=>403010,
 						"message"=>"The meta.token you specified has expired."
+					]]);
+				}
+				
+				//Check the uid sent is the uid that is authorized
+				if ($meta['token']['uid']!==$tokenData['uid']){
+					return new Response(403, ["SWDAPI-Error"=>[
+						"code"=>403012,
+						"message"=>"The meta.token.uid you specified is invalid."
 					]]);
 				}
 				

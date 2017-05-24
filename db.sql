@@ -25,6 +25,6 @@ CREATE TABLE `tokens` (
   `secret` char(64) NOT NULL,
   `expires` bigint(20) NOT NULL,
   `timeout` int(11) NOT NULL,
-  `lastUsed` mediumint(9) NOT NULL,
+  `lastUsed` bigint(9) NOT NULL,
   UNIQUE KEY `id` (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1;

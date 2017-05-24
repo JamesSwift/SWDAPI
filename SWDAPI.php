@@ -22,10 +22,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$this->_securityFallback = null;
 		$this->_predefinedMethods = [
 		"swdapi/registerClient"=> [
-			"call"=>[$this, "_registerClient"]
+			"call"=>[$this, "_pdm__registerClient"]
 		],
 		"swdapi/getAuthToken"=> [
-			"call"=>[$this, "_getAuthToken"]
+			"call"=>[$this, "_pdm__getAuthToken"]
 		],
 		
 	];
@@ -378,17 +378,23 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			return $metaCheck;
 		}
 		
+		//Create variable to sideload token data into
+		$token = null;
+		
 		//Check signature
-		$sigCheck = $this->_checkSignature($method, $meta, $data);
+		$sigCheck = $this->_checkSignature($method, $meta, $data, $token);
 		if ($sigCheck!==true){
 			return $sigCheck;
 		}
 		
 		//Handle auth
-		//todo
+		$auth=null;
+		if ($token!==null && iiset($token['uid']) && is_string($token['uid'])){
+			$auth['authorizedUser']=$token['uid'];
+		}
 		
 		//Make request
-		$response = $this->request($method, $data);
+		$response = $this->request($method, $data, $auth);
 		
 		if (!($response instanceof Response)){
 			return new Response(500, ["SWDAPI-Error"=>[
@@ -519,7 +525,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 	}
 	
-	protected function _checkSignature($method, $meta, $data){
+	protected function _checkSignature($method, $meta, $data, &$returnToken = null){
 		
 		$oldKey = $meta['signature'];
 		unset($meta['signature']);
@@ -551,15 +557,44 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		if (isset($meta['token']['id']) && isset($meta['token']['uid'])){
 			
 			try {
-				//Fetch key
-				$tokenData = $this->_getTokenData($meta['token']['uid'], $meta['token']['id']);
+				//Fetch token
+				$tokenData = $this->_fetchAuthToken($meta['token']['id'], $meta['token']['uid']);
+				
+				//Check this token is allowed on this client
+				if ($tokenData['clientID']!==$clientData['id']){
+					return new Response(403, ["SWDAPI-Error"=>[
+						"code"=>403009,
+						"message"=>"The meta.token you specified is not allowed to be used by your client/terminal."
+					]]);
+				}
+				
+				//Check token hasn't expired
+				if ($tokenData['expires']<=time()){
+					return new Response(403, ["SWDAPI-Error"=>[
+						"code"=>403010,
+						"message"=>"The meta.token you specified has expired."
+					]]);
+				}
+				
+				//Check timeout
+				if ($tokenData['lastUsed']+$tokenData['timeout']<=time()){
+					return new Response(403, ["SWDAPI-Error"=>[
+						"code"=>403011,
+						"message"=>"The meta.token you specified has timed-out.".time()
+					]]);
+				}
+				
+				//Send the token back via &reference
+				$returnToken = $token;
+				
 				//Add it to the hash
-				$keyPlain.=$tokenData['secret'];
+				$keyPlain.=$tokenData['id'].$tokenData['secret'];
+				
 			} catch (\Exception $e){
 				
 				return new Response(403, ["SWDAPI-Error"=>[
-					"code"=>403002,
-					"message"=>"The meta.client.id you specified doesn't exist."
+					"code"=>403008,
+					"message"=>"The meta.token.id you specified doesn't exist or has timed out."
 				]]);
 			
 			}	
@@ -592,24 +627,59 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			"expires"=>$expires,
 			"timeout"=>$timeout,
 			"clientID"=>$clientID,
+			"lastUsed"=>time()
 		];
 		
 		//Attempt to add row
-		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, expires=:expires, timeout=:timeout");
+		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, expires=:expires, timeout=:timeout, lastUsed=:lastUsed");
 		$q->execute($token);
 		$tokenID = (int)$this->_db->lastInsertId();
 		
 		//Build full token data and return it
 		$token['id']=$tokenID;
+		unset($token['lastUsed']);
 		
 		return $token;
+			
+	}
+	
+	protected function _fetchAuthToken($tokenID, $userID, $updateLastUsed=true){
+		
+		//Make sure qe are connected to DB
+		$this->_connectDB();
+
+		//Attempt to fetch row
+		$q = $this->_db->prepare("SELECT * FROM tokens WHERE id=:tokenID AND uid=:userID");
+		$q->execute(["tokenID"=>$tokenID, "userID"=>$userID]);
+		
+		$row = $q->fetch(\PDO::FETCH_ASSOC);
+		
+		if (is_array($row)){
+			
+			//Update the lastUsed?
+			if ($updateLastUsed===true){
+				
+				//Has the token timed-out?
+				if ($row['lastUsed']+$row['timeout']<=time()){
+					throw new \Exception("Token does has timed-out");
+				}
+				
+				$q = $this->_db->prepare("UPDATE tokens SET lastUsed=:lastUsed WHERE id=:tokenID AND uid=:userID");
+				$q->execute(["lastUsed"=>time(), "tokenID"=>$tokenID, "userID"=>$userID]);	
+			}
+			
+			//Return the previous state
+			return $row;
+		}
+		
+		throw new \Exception("Token does not exist.");
 			
 	}
 	
 	///////////////////////////////////////////
 	//Predefined methods
 	
-	protected function _registerClient($data, $authInfo){
+	protected function _pdm__registerClient($data, $authInfo){
 		
 		//Make sure qe are connected to DB
 		$this->_connectDB();
@@ -727,7 +797,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	
 	
-	protected function _getAuthToken($data, $authInfo){
+	protected function _pdm__getAuthToken($data, $authInfo){
 		
 		//Set defaults
 		$expiry = time()+(60*60*24*2);

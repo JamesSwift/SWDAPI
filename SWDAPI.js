@@ -297,8 +297,10 @@ var swdapi = swdapi || function(URI, config) {
 			"user":user,
 			"pass":pass,
 			"clientID":clientData.id,
+			"requestExpiry":requestExpiry,
+			"requestTimeout":requestTimeout,
 			"salt":salt,
-			"signature":forge_sha256(user+pass+salt+clientData.id+clientData.secret)
+			"signature":forge_sha256(user+pass+requestExpiry+requestTimeout+salt+clientData.id+clientData.secret)
 		};
 		
 		//define Successful request

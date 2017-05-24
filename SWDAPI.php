@@ -703,6 +703,14 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected function _getAuthToken($data, $authInfo){
 		
+		//Set defaults
+		$expiry = time()+(60*60*24*2);
+		$timeout = (60*10);
+		
+		//Define limits
+		$maxExpiry = time()+(60*60*24*28);
+		$maxTimeout = (60*60*24);
+		
 		//Check we have something configured to verify the credentials
 		if (!is_callable($this->_credentialVerifier)){
 			return new Response(500, ["SWDAPI-Error"=>[
@@ -725,6 +733,32 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				"code"=>400016,
 				"message"=>"Bad request: To receive an AuthToken you must specify a password (string, length >= 5)."
 			]]);
+		}
+		
+		//Check requestExpiry is valid
+		if (isset($data['requestExpiry']) && $data['requestExpiry']!==null){
+			$expiry = $data['requestExpiry'];
+			if (!is_int($data['requestExpiry']) || $data['requestExpiry']<time()+30 || $data['requestExpiry']<$maxExpiry){
+				return new Response(400, ["SWDAPI-Error"=>[
+					"code"=>400020,
+					"message"=>"Bad request: requestExpiry is not defined or is invalid. It must be an timestamp between 30 seconds from now and ".$maxExpiry
+				]]);
+			}
+		} else {
+			$data['requestExpiry'] = null;
+		}
+		
+		//Check requestTimeout was set and is valid
+		if (isset($data['requestTimeout']) && $data['requestTimeout']!==null){
+			$timeout = $data['requestTimeout'];
+			if (!is_int($data['requestTimeout']) || $data['requestTimeout']<5 || $data['requestTimeout']<$maxTimeout){
+				return new Response(400, ["SWDAPI-Error"=>[
+					"code"=>400021,
+					"message"=>"Bad request: requestTimeout is not defined or is invalid. It must be an integar between 5 and ".$maxTimeout
+				]]);
+			}
+		} else {
+			$data['requestTimeout'] = null;
 		}
 		
 		//Check salt was specified
@@ -762,7 +796,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 			
 		//Reconstruct the signature
-		$newSig = hash("sha256", $data['user'].$data['pass'].$data['salt'].$data['clientID'].$clientData['secret']);
+		$newSig = hash("sha256", $data['user'].$data['pass'].$data['requestExpiry'].$data['requestTimeout'].$data['salt'].$data['clientID'].$clientData['secret']);
 		
 		//Compare the signature to our signature
 		if ($newSig!==$data['signature']){
@@ -771,29 +805,28 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				"message"=>"Forbidden: The signature you sent doesn't match the data you sent and your clientID-secret."
 			]]);	
 		}
-
-		//to do
 		
 		//Check credentials
 		$userDetails = $this->_credentialVerifier($user,$pass);
 		if ($userDetails===false || !is_array($userDetails) || !isset($userDetails['authorizedUser']) || !is_string($userDetails['authorizedUser'])){
-			
+			return new Response(403, ["SWDAPI-Error"=>[
+				"code"=>403007,
+				"message"=>"Forbidden: The user or password you specified is wrong."
+			]]);			
 		}
 		
 		//Register a token (secret and id)
-		$tokenData = [];//todo
-		
-		//Construct the auth token
-		$token = [
-			"uid"=>$userDetails['authorizedUser'],
-			"id"=>$tokenData['id'],
-			"secret"=>$tokenData['secret'],
-			"expiry"=>$tokenData['expiry'],
-			"timeout"=>$tokenData['timeout'],
-		];
+		try {
+			$token = $this->_createAuthToken($userDetails['authorizedUser'], $expiry, $timeout);
+		} catch (\Exception $e){
+			return new Response(500, ["SWDAPI-Error"=>[
+				"code"=>500005,
+				"message"=>"Server Error: Could not create token in DB."
+			]]);
+		}
 		
 		//Create a singature of it
-		$signature = "";
+		$signature = hash("sha256", json_encode([$token, $data['salt'], $clientData['secret']]));
 		
 		//Return it
 		return new Response(200, ['token'=>$token, 'signature'=>$signature]);

@@ -580,6 +580,32 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 	}
 	
+	protected function _createAuthToken($userID, $clientID, $expires, $timeout){
+		
+		//Make sure qe are connected to DB
+		$this->_connectDB();
+		
+		//Build token
+		$token = [
+			"uid"=>$userID,
+			"secret"=>hash("sha256", openssl_random_pseudo_bytes(200)),
+			"expires"=>$expires,
+			"timeout"=>$timeout,
+			"clientID"=>$clientID,
+		];
+		
+		//Attempt to add row
+		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, expires=:expires, timeout=:timeout");
+		$q->execute($token);
+		$tokenID = $this->_db->lastInsertId();
+		
+		//Build full token data and return it
+		$token['id']=$tokenID;
+		
+		return $token;
+			
+	}
+	
 	///////////////////////////////////////////
 	//Predefined methods
 	
@@ -825,8 +851,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Register a token (secret and id)
 		try {
-			$token = $this->_createAuthToken($userDetails['authorizedUser'], $expiry, $timeout);
+			$token = $this->_createAuthToken($userDetails['authorizedUser'], $clientData['id'], $expiry, $timeout);
 		} catch (\Exception $e){
+			
 			return new Response(500, ["SWDAPI-Error"=>[
 				"code"=>500005,
 				"message"=>"Server Error: Could not create token in DB."

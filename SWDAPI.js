@@ -232,7 +232,8 @@ var swdapi = swdapi || function(URI, config) {
 	// Your requested expiry and timeout may not be honoured by the server, always refer to the response
 	//
 	// On success it calls "callback" and passes an object [
-	//  uid 	= int - the id of the user account this token is for
+	//  uid 	= string - the id of the user account this token is for
+	//  clientID= int - the id of the client this token is linked to
 	//	id		= int - the id of the session token
 	//  secret	= string 64 - the secret key
 	//  expiry	= int - unixtime that this token expires
@@ -310,16 +311,6 @@ var swdapi = swdapi || function(URI, config) {
 					clientData.secret
 					]))
 		};
-		
-		console.log(JSON.stringify([
-					user,
-					pass,
-					requestExpiry,
-					requestTimeout,
-					salt,
-					clientData.id,
-					clientData.secret
-					]));
 		
 		//define Successful request
 		successHandler = function(response){

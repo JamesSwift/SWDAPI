@@ -23,6 +23,5 @@ CREATE TABLE IF NOT EXISTS `tokens` (
   `secret` char(64) NOT NULL,
   `expires` bigint(20) NOT NULL,
   `timeout` int(11) NOT NULL,
-  PRIMARY KEY (`clientID`),
   UNIQUE KEY `id` (`id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;

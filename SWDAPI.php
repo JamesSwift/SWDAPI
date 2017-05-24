@@ -853,7 +853,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		try {
 			$token = $this->_createAuthToken($userDetails['authorizedUser'], $clientData['id'], $expiry, $timeout);
 		} catch (\Exception $e){
-			
+			die(var_dump($e));
 			return new Response(500, ["SWDAPI-Error"=>[
 				"code"=>500005,
 				"message"=>"Server Error: Could not create token in DB."

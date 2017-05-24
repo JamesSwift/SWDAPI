@@ -553,7 +553,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Add authentication token if sent
-		if (isset($meta['token']['id']) && isset($meta['token']['uid'])){
+		if (isset($meta['token']['id']) && is_int($meta['token']['id']) && isset($meta['token']['uid']) && is_string($meta['token']['uid'])){
 			
 			try {
 				//Fetch token

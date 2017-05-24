@@ -796,7 +796,15 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 			
 		//Reconstruct the signature
-		$newSig = hash("sha256", $data['user'].$data['pass'].$data['requestExpiry'].$data['requestTimeout'].$data['salt'].$data['clientID'].$clientData['secret']);
+		$newSig = hash("sha256", json_encode([
+			$data['user'],
+			$data['pass'],
+			$data['requestExpiry'],
+			$data['requestTimeout'],
+			$data['salt'],
+			$data['clientID'],
+			$clientData['secret']
+		]));
 		
 		//Compare the signature to our signature
 		if ($newSig!==$data['signature']){
@@ -807,7 +815,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Check credentials
-		$userDetails = $this->_credentialVerifier($user,$pass);
+		$userDetails = call_user_func($this->_credentialVerifier, $data['user'], $data['pass']);
 		if ($userDetails===false || !is_array($userDetails) || !isset($userDetails['authorizedUser']) || !is_string($userDetails['authorizedUser'])){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,

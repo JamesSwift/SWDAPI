@@ -6,6 +6,24 @@ require "SWDAPI.php";
 //Instantiate the API and load your configuration
 $API = new \JamesSwift\SWDAPI\SWDAPI("exampleConfig.json");
 
+//Optionally define a function to verify user-pass login attempts
+//
+// If the $user and $pass that are passed in are correct, the function
+// should return an array with 'authorizedUser' set to be a unique user
+// identifier (normally numeric, but can be anything).
+//
+// If the credentials don't match the function should return false
+
+$API->registerCredentialVerifier(function($user,$pass){
+    
+    if ($user==="test" && $pass==="Example"){
+        return ["authorizedUser"=>"test"];
+    }
+    
+    //Didn't match
+    return false;
+});
+
 
 // Optionally setup your own security method
 // SWDAPI provides it's own method for a client to authenticate

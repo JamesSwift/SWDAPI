@@ -300,8 +300,26 @@ var swdapi = swdapi || function(URI, config) {
 			"requestExpiry":requestExpiry,
 			"requestTimeout":requestTimeout,
 			"salt":salt,
-			"signature":forge_sha256(user+pass+requestExpiry+requestTimeout+salt+clientData.id+clientData.secret)
+			"signature":forge_sha256(JSON.stringify([
+					user,
+					pass,
+					requestExpiry,
+					requestTimeout,
+					salt,
+					clientData.id,
+					clientData.secret
+					]))
 		};
+		
+		console.log(JSON.stringify([
+					user,
+					pass,
+					requestExpiry,
+					requestTimeout,
+					salt,
+					clientData.id,
+					clientData.secret
+					]));
 		
 		//define Successful request
 		successHandler = function(response){

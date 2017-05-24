@@ -183,7 +183,23 @@ var swdapi = swdapi || function(URI, config) {
 	//Set the defaultToken to null
 	function logout(callback) {
 
+		var handler, tokenCopy = defaultToken;
+		
 		callback = defaultFor(callback, null);
+		
+		//Handle response
+		handler = function(response) {
+			if (response === true) {
+				console.log("Logout completed");
+			}
+			else {
+				console.log("Logout failed.");
+				defaultToken = tokenCopy;
+			}
+			if (typeof callback === "function") {
+				callback(response);
+			}
+		};
 
 		//Are we currently logged in?
 		if (defaultToken !== null) {
@@ -191,10 +207,11 @@ var swdapi = swdapi || function(URI, config) {
 			console.log("Requesting logout.")
 			
 			//Make logout request and call handler with response
-			request("swdapi/invalidateToken", {
-				"id": defaultToken
-			}, handler, handler);
+			request("swdapi/invalidateAuthToken", {
+				"id": defaultToken.id
+			}, handler, handler, defaultToken);
 			
+			//Remove token in case another request attempts to use it
 			defaultToken = null;
 
 		//Not logged in, just run callback with true
@@ -202,26 +219,11 @@ var swdapi = swdapi || function(URI, config) {
 		else {
 			console.log("logout called when not logged in.")
 			if (typeof callback === "function") {
-				callback(true);
+				callback(false);
 			}
 			
 		}
-
-		//Handle function
-		var handler = function(response) {
-			if (response === true) {
-				console.log("Logout completed");
-			}
-			else {
-				console.log("Logout failed");
-			}
-			if (typeof callback === "function") {
-				callback(response);
-			}
-		}
 		
-		return true;
-
 	}
 
 	//Attempts to fetch user session token with supplied credentials

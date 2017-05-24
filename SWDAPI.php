@@ -27,6 +27,9 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		"swdapi/getAuthToken"=> [
 			"call"=>[$this, "_pdm__getAuthToken"]
 		],
+		"swdapi/invalidateAuthToken"=> [
+			"call"=>[$this, "_pdm__invalidateAuthToken"]
+		],
 		
 	];
 	}
@@ -683,6 +686,18 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 	}
 	
+	protected function _invalidateAuthToken($tokenID){
+		
+		//Make sure qe are connected to DB
+		$this->_connectDB();
+
+		//Attempt to delete row
+		$q = $this->_db->prepare("DELETE FROM tokens WHERE id=:tokenID");
+		$q->execute(["tokenID"=>$tokenID]);
+		
+		return true;	
+	}
+	
 	///////////////////////////////////////////
 	//Predefined methods
 	
@@ -945,6 +960,53 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Return it
 		return new Response(200, ['token'=>$token, 'signature'=>$signature]);
 	}
+	
+	protected function _pdm__invalidateAuthToken($data, $authInfo){
+		
+		//Check that we are authorized
+		if (!isset($authInfo['authorizedUser']) || !is_string($authInfo['authorizedUser'])){
+			return new Response(403, ["SWDAPI-Error"=>[
+				"code"=>403013,
+				"message"=>"Access denied: You must be authenticated to invalidate an auth token."
+			]]);	
+		}
+		
+		//Check some id was specified
+		if (!isset($data['id']) || !is_int($data['id'])){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400022,
+				"message"=>"Bad request: You must specify the 'id' of the token you wish to invalidate."
+			]]);
+		}
+		
+		//Attempt to fetch token (to make sure we have access)
+		try {
+				//Fetch token
+				$tokenData = $this->_fetchAuthToken($data['id'], $authInfo['authorizedUser']);
+		
+			
+		} catch(\Exception $e){
+			return new Response(403, ["SWDAPI-Error"=>[
+				"code"=>403014,
+				"message"=>"Access denied: The token you specified could not be found, or you don't have access to delete it."
+			]]);
+		}
+		
+		
+		//Attempt to delete the token
+		try {
+			$this->_invalidateAuthToken($data['id']);
+			
+			return new Response(200, true);
+			
+		} catch(\Exception $e){
+			return new Response(500, ["SWDAPI-Error"=>[
+				"code"=>500006,
+				"message"=>"Server Error: Problem removing the token from the DB."
+			]]);
+		}
+		
+	}
 
 }
 
@@ -961,7 +1023,7 @@ class Response {
 	 	http_response_code($this->status);
 	 	
 	 	//Json
-	 	if (is_array($this->data)){
+	 	if (is_array($this->data) || is_bool($this->data)){
 	 		header('Content-Type: application/json');
 	 		print json_encode($this->data, JSON_UNESCAPED_SLASHES);
 	 		

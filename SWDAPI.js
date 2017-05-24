@@ -165,7 +165,7 @@ var swdapi = swdapi || function(URI, config) {
 
 		callback = defaultFor(callback, null);
 
-		return getAuthToken(user, pass, function(token) {
+		getAuthToken(user, pass, function(token) {
 
 			//If login successfull, store the token for future use
 			if (typeof token == "object") {
@@ -315,11 +315,21 @@ var swdapi = swdapi || function(URI, config) {
 		//define Successful request
 		successHandler = function(response){
 			
-			//Check signature with our salt in matches our secret data
+			//Recreate response signature
+			var ourSig = forge_sha256(JSON.stringify([
+					response.token,
+					salt,
+					clientData.secret
+					]));
+					
+			//Check the signature matches (i.e., no man in the middle)
+			if (ourSig!==response.signature){
+				throw "Error in returned auth token. Signature is invalid.";
+			}
 			
 			//Execute callback
 			if (typeof callback === "function") {
-				callback(response);
+				callback(response.token);
 			}
 		};
 		
@@ -336,13 +346,54 @@ var swdapi = swdapi || function(URI, config) {
 		//Make request to server
 		request("swdapi/getAuthToken", data, successHandler, failureHandler, null);
 		
-		
-		return true;
 	}
 
 	function checkToken(token) {
 
-		//todo: check type and validity
+		//First, is there something to test?
+		if (token===undefined || typeof token !== "object"){
+			console.log("Invalid token: must be object");
+			return false;
+		}
+		
+		//Check for id
+		if (token.id===undefined || Number.isInteger(token.id) === false || token.id < 0){
+			console.log("Invalid token: id must be defined and be a non-zero integar");
+			return false;
+		}
+		
+		//Check for clientID
+		if (token.clientID===undefined || Number.isInteger(token.clientID) === false || token.clientID < 0){
+			console.log("Invalid token: clientID must be defined and be a non-zero integar");
+			return false;
+		}
+		
+		//Check for uid
+		if (token.uid===undefined || typeof token.uid !== "string" || token.uid.length < 1){
+			console.log("Invalid token: uid must be defined and be a non-empty string");
+			return false;
+		}
+		
+		//Check for secret
+		if (token.secret===undefined || typeof token.secret !== "string" || token.secret.length !== 64){
+			console.log("Invalid token: secret must be defined and be a string (64)");
+			return false;
+		}
+		
+		//Check for expires
+		if (token.expires===undefined || Number.isInteger(token.expires) === false || token.expires < 1){
+			console.log("Invalid token: expires must be defined and be a non-zero integar");
+			return false;
+		}
+		
+		//Check for timeout
+		if (token.timeout===undefined || Number.isInteger(token.timeout) === false || token.timeout < 1){
+			console.log("Invalid token: timeout must be defined and be a non-zero integar");
+			return false;
+		}
+		
+		//Other elements are allowed but are not referenced by the api
+		
 		return true;
 	}
 

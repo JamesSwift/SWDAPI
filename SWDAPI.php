@@ -597,7 +597,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Attempt to add row
 		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, expires=:expires, timeout=:timeout");
 		$q->execute($token);
-		$tokenID = $this->_db->lastInsertId();
+		$tokenID = (int)$this->_db->lastInsertId();
 		
 		//Build full token data and return it
 		$token['id']=$tokenID;
@@ -841,8 +841,8 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Check credentials
-		$userDetails = call_user_func($this->_credentialVerifier, $data['user'], $data['pass']);
-		if ($userDetails===false || !is_array($userDetails) || !isset($userDetails['authorizedUser']) || !is_string($userDetails['authorizedUser'])){
+		$userID = call_user_func($this->_credentialVerifier, $data['user'], $data['pass']);
+		if ($userDetails===false || !is_string($userID) ){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,
 				"message"=>"Forbidden: The user or password you specified is wrong."
@@ -851,9 +851,11 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Register a token (secret and id)
 		try {
-			$token = $this->_createAuthToken($userDetails['authorizedUser'], $clientData['id'], $expiry, $timeout);
+			
+			$token = $this->_createAuthToken($userID, $clientData['id'], $expiry, $timeout);
+	
 		} catch (\Exception $e){
-			die(var_dump($e));
+			
 			return new Response(500, ["SWDAPI-Error"=>[
 				"code"=>500005,
 				"message"=>"Server Error: Could not create token in DB."

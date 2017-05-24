@@ -9,15 +9,16 @@ $API = new \JamesSwift\SWDAPI\SWDAPI("exampleConfig.json");
 //Optionally define a function to verify user-pass login attempts
 //
 // If the $user and $pass that are passed in are correct, the function
-// should return an array with 'authorizedUser' set to be a unique user
-// identifier (normally numeric, but can be anything).
+// should return a string with the user id. This may be the same as the
+// $user variable passed in, or it may be different (such as a numeric UID).
+// Note that it must be of type string, or it will be assumed the login failed.
 //
 // If the credentials don't match the function should return false
 
-$API->registerCredentialVerifier(function($user,$pass){
+$API->registerCredentialVerifier(function($user, $pass){
     
     if ($user==="test" && $pass==="Example"){
-        return ["authorizedUser"=>"test"];
+        return "test";
     }
     
     //Didn't match

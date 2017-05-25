@@ -4,6 +4,9 @@
             "dsn": "mysql:host=localhost;dbname=swdapi",
             "user": "root",
             "pass": ""
+        },
+        "tokens": {
+            "defaultTimeout": 3600
         }
     },
     "methods": {
@@ -27,5 +30,5 @@
             ]
         }
     },
-    "signedHash": "11ee0fe4"
+    "signedHash": "5199ba6c"
 }

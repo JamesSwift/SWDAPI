@@ -283,7 +283,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			$this->settings['methodSrcRoot'] = $newSettings['methodSrcRoot'];
 		}
 		
-		//db
+		//Database
 		if (isset($settings['db'])){
 			if (isset($settings['db']['user']) && (!is_string($settings['db']['user']) || preg_match("$[^0-9a-zA-Z\-\\/\.]$", $settings['db']['user']))){
 				throw new \Exception("The settings.db.user value is undefined or is an invalid format.");
@@ -300,6 +300,55 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				"user"=>$settings['db']['user'],
 				"pass"=>$settings['db']['pass'],
 			];
+			
+		}
+		
+		//Tokens
+		if (isset($settings['tokens'])){
+			
+			//Init array
+			$newSettings['tokens'] = [];
+			
+			//maxExpiry
+			if (isset($settings['tokens']['maxExpiry'])){
+				
+				if (!is_int($settings['tokens']['maxExpiry']) || $settings['tokens']['maxExpiry']<1){
+					throw new \Exception("The settings.tokens.maxExpiry value must be a positive integar showing the maximum time in seconds from creation until the token expires.");
+				}
+				
+				$newSettings['tokens']['maxExpiry'] = $settings['tokens']['maxExpiry'];
+			}
+			
+			//defaultExpiry
+			if (isset($settings['tokens']['defaultExpiry'])){
+				
+				if (!is_int($settings['tokens']['defaultExpiry']) || $settings['tokens']['defaultExpiry']<1){
+					throw new \Exception("The settings.tokens.defaultExpiry value must be a positive integar showing the default time in seconds from creation until the token expires.");
+				}
+				
+				$newSettings['tokens']['defaultExpiry'] = $settings['tokens']['defaultExpiry'];
+			}
+			
+			//maxTimeout
+			if (isset($settings['tokens']['maxTimeout'])){
+				
+				if (!is_int($settings['tokens']['maxTimeout']) || $settings['tokens']['maxTimeout']<1){
+					throw new \Exception("The settings.tokens.maxTimeout value must be a positive integar showing the maximum time in seconds from creation until the token times-out with dis-use.");
+				}
+				
+				$newSettings['tokens']['maxTimeout'] = $settings['tokens']['maxTimeout'];
+			}
+			
+			//defaultTimeout
+			if (isset($settings['tokens']['defaultTimeout'])){
+				
+				if (!is_int($settings['tokens']['defaultTimeout']) || $settings['tokens']['defaultTimeout']<1){
+					throw new \Exception("The settings.tokens.defaultTimeout value must be a positive integar showing the default time in seconds from creation until the token times out with dis-use.");
+				}
+				
+				$newSettings['tokens']['defaultTimeout'] = $settings['tokens']['defaultTimeout'];
+			}
+			
 			
 		}
 		
@@ -822,12 +871,12 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _pdm__getAuthToken($data, $authInfo){
 		
 		//Set defaults
-		$expiry = time()+(60*60*24*2);
-		$timeout = (60*10);
+		$expiry = time()+(isset($this->settings['tokens']['defaultExpiry']) ? $this->settings['tokens']['defaultExpiry'] : 172800); //2 Days
+		$timeout = (isset($this->settings['tokens']['defaultTimeout']) ? $this->settings['tokens']['defaultTimeout'] : 600); //10 minutes
 		
 		//Define limits
-		$maxExpiry = time()+(60*60*24*28);
-		$maxTimeout = (60*60*24);
+		$maxExpiry = time()+(isset($this->settings['tokens']['maxExpiry']) ? $this->settings['tokens']['maxExpiry'] : 2419200); //28 days
+		$maxTimeout = (isset($this->settings['tokens']['maxTimeout']) ? $this->settings['tokens']['maxTimeout'] : 86400); //1 day
 		
 		//Check we have something configured to verify the credentials
 		if (!is_callable($this->_credentialVerifier)){

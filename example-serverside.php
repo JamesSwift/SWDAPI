@@ -23,6 +23,9 @@ var_dump($result1);
 $result2 = $API->request("plus1", ["number"=>20]);
 var_dump($result2);
 
+//Make a request to a secure method
+$result3 = $API->request("auth-test"); // <- this will return 403 access denied
+var_dump($result3);
 
 
 // The $API->request() method by default doesn't supply any user credentials.
@@ -31,10 +34,10 @@ var_dump($result2);
 // information through the third parameter. You can send additional information 
 // though the parameter as well, but make sure you send the uid as "authorizedUser"
 // to take advantage of some in-build tools
+//
+// If you supply "authorizedUser" it is assumed that you have authenticated this user
+// with your own system. No other authentication is done.
 
-
-$result3 = $API->request("auth-test"); // <- this will return 403 access denied
-var_dump($result3);
 
 $result4 = $API->request("auth-test", null, ["authorizedUser"=>"fred"]);
 var_dump($result4);

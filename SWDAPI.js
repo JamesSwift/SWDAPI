@@ -36,6 +36,7 @@ var swdapi = swdapi || function(URI, config) {
 	var endpointURI = URI,
 		serverTimeOffset = 0,
 		defaultToken = null,
+		autoReregister = (typeof config['autoReregister'] === "boolean" ? config['autoReregister'] : true),
 		fetchClientData = (typeof config['fetchClientData'] === "function" ? config['fetchClientData'] : fetchClientData_Default),
 		storeClientData = (typeof config['storeClientData'] === "function" ? config['storeClientData'] : storeClientData_Default),
 
@@ -68,7 +69,7 @@ var swdapi = swdapi || function(URI, config) {
 
 		//Is it different from what we have stored?
 		var tmpData = fetchClientData();
-		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name !== config.setClientName.substring(0, 140)) {
+		if (typeof tmpData !== "object" || tmpData.name === undefined || tmpData.name !== config.setClientName.substring(0, 140) || tmpData.secret === undefined || tmpData.id === undefined) {
 			//Register the new name
 			registerClient(config.setClientName);
 		}
@@ -122,7 +123,7 @@ var swdapi = swdapi || function(URI, config) {
 		}
 
 		//Nonce
-		meta.nonce = (Math.random().toString(36) + '00000000000000000').slice(2, 10 + 2);
+		meta.nonce = generateSalt();
 
 		//Set expiry to be +/- 1 minute
 		meta.valid = {
@@ -160,7 +161,7 @@ var swdapi = swdapi || function(URI, config) {
 	}
 
 
-//Aquire a new AuthToken and set it as defaultToken
+	//Aquire a new AuthToken and set it as defaultToken
 	function login(user, pass, callback) {
 
 		callback = defaultFor(callback, null);
@@ -295,7 +296,7 @@ var swdapi = swdapi || function(URI, config) {
 		}
 		
 		//Build data to send
-		var salt=(Math.random().toString(36) + '00000000000000000').slice(2, 10 + 2);
+		var salt=generateSalt();
 		data = {
 			"user":user,
 			"pass":pass,
@@ -329,6 +330,8 @@ var swdapi = swdapi || function(URI, config) {
 				throw "Error in returned auth token. Signature is invalid.";
 			}
 			
+			console.log("Successfully authenticated as "+user);
+			
 			//Execute callback
 			if (typeof callback === "function") {
 				callback(response.token);
@@ -337,6 +340,8 @@ var swdapi = swdapi || function(URI, config) {
 		
 		//define Problem with request
 		failureHandler = function(response){
+			
+			console.log("Could not authenticate as "+user);
 			
 			if (typeof callback === "function") {
 				callback(response);
@@ -354,7 +359,7 @@ var swdapi = swdapi || function(URI, config) {
 
 		//First, is there something to test?
 		if (token===undefined || typeof token !== "object"){
-			console.log("Invalid token: must be object");
+			console.log("Invalid token: must be object", token);
 			return false;
 		}
 		
@@ -409,7 +414,7 @@ var swdapi = swdapi || function(URI, config) {
 
 		var currentData = fetchClientData(),
 			sendData = {
-				"salt": (Math.random().toString(36) + '00000000000000000').slice(2, 10 + 2)
+				"salt": generateSalt()
 			},
 			callbackHandler;
 
@@ -500,31 +505,38 @@ var swdapi = swdapi || function(URI, config) {
 
 			//Failure handler
 			function(responseData) {
-				
 				//Check if this request failed because our meta.signature was invalid (or id not found)
-				if (typeof responseData !== "object" || responseData['SWDAPI-Error'] === undefined || !(responseData['SWDAPI-Error'].code === 400014 || responseData['SWDAPI-Error'].code === 403002  || responseData['SWDAPI-Error'].code === 403004)) {
+				if (
+						typeof responseData !== "object" || 
+						responseData['SWDAPI-Error'] === undefined || 
+						[400014, 403002, 403004].indexOf(parseInt(responseData['SWDAPI-Error'].code)) === -1
+				){
 					throw "Could not register the client. An unexpected error occured.";
 				}
 
 				//So, we only reach this point if the client id-secret pair was invalid (expired or corrupted)
 				console.log("The client id-secret pair stored on this device has either expired or is corrupt. Requesting a new one.");
 
-				//Remove the invalid client id-secret pair identity
+				//Remove the invalid client id-secret pair identity and store it
 				delete currentData.id;
 				delete currentData.secret;
 				storeClientData({
 					"name": sendData.name,
 				});
-				delete sendData.id;
-				delete sendData.signature;
+				
+				//Rewrite send data to remove corrupt info
+				sendData = {
+					name: sendData.name,
+					salt: generateSalt()
+				};
 
 				//Run a new request just specifying a client name and a salt value
 				//which will return a new id-secret pair for us to use
-				request("swdapi/registerClient", sendData, null, callbackHandler,
+				request("swdapi/registerClient", sendData, callbackHandler,
 
 					//If it still fails, just throw an error and give up
 					function() {
-						throw "Could not register the client. An unexpected error occured.";
+						throw "Could not register the client. A very unexpected error occured.";
 					}
 
 				);
@@ -619,7 +631,7 @@ var swdapi = swdapi || function(URI, config) {
 				return;
 			}
 
-			//Decode json response
+			//Decode json response automatically
 			var response = (xmlhttp.getResponseHeader('content-type') === "application/json" ? JSON.parse(xmlhttp.responseText) : xmlhttp.responseText);
 
 			//OK - route response to callback
@@ -635,59 +647,82 @@ var swdapi = swdapi || function(URI, config) {
 
 			//Decrease TTL
 			ttl -= 1;
-
-			//Is this a SWDAPI error
-			if (typeof response !== "string" && response['SWDAPI-Error'] !== undefined && response['SWDAPI-Error']['code'] !== undefined) {
-
-				var code = response['SWDAPI-Error']['code'];
-
-				//Is it one we want to recover from?
-
-				//valid.from & valid.to errors
-				if (code >= 400006 && code <= 400009) {
-
-					console.log("Request failed due to expiry data. Reseting system time offset and trying again.");
-
-					//Reset serverTimeOffset with date supplied by this request
-					storeServerTimeOffset(xmlhttp.getResponseHeader("date"));
-
+			
+			if (ttl > 0 ){
+				//Is this a SWDAPI error
+				if (typeof response !== "string" && response['SWDAPI-Error'] !== undefined && response['SWDAPI-Error']['code'] !== undefined) {
+	
+					var code = response['SWDAPI-Error']['code'];
+	
+					//Is it one we want to recover from?
+	
+					//valid.from & valid.to errors
+					if (code >= 400006 && code <= 400009) {
+	
+						console.log("Request failed due to expiry data. Reseting system time offset and trying again.");
+	
+						//Reset serverTimeOffset with date supplied by this request
+						storeServerTimeOffset(xmlhttp.getResponseHeader("date"));
+	
 					//Invalid client id or failed signature
-				}
-				else if (code == 400014 || code == 403002) {
-					//Warn the developer (as changing client id automatically would de-authorize all connected accounts)
-					console.log(
-						"SWDAPI: An api request failed because the server reported that the request's signature was invalid. " +
-						"This could be because the client id-secret pair you are using is invalid or has expired, the authentication token you are using has expired or is invalid or some other secret information embeded in the signature has changed on the server." +
-						"Please contact support. Clearing you browser cache and localStorage container will fix this problem but will require you to reauthenticate."
-					);
-					//Don't retry
-					ttl = 0;
-
+					}
+					else if (code == 400014 || code == 403002) {
+						
+						//Warn the developer (as changing client id automatically would de-authorize all connected accounts)
+						console.log(
+							"SWDAPI: An api request to '"+method+"' failed because the server reported that the request's signature was invalid. " +
+							"This could be because the client id-secret pair you are using is invalid or has expired, the authentication token you are using has expired or is invalid, or some other secret information embeded in the signature has changed on the server. "
+						);
+						
+						//Don't auto re-run this request, as resetting client data automatically invalidates the auth token
+						ttl = 0;
+						
+						//Should we attempt to recover?
+						if (autoReregister===true && method !== "swdapi/registerClient"){
+							console.log("Attemping to automatically re-register the client using the original name.")
+							
+							//Clear out all but the name from the Client Data
+							var tempData = fetchClientData();
+							storeClientData({
+								"name": tempData.name,
+							});
+							
+							//Remove the default token
+							defaultToken = null;
+							
+							//Try to register the client again
+							registerClient();
+							
+						} else {
+							console.log("Auto re-registering the client is disabled. Please contact support. Clearing you browser cache and localStorage container will fix this problem but will require you to reauthenticate.");
+						}
+	
 					//We don't recover from this error
+					}
+					else {
+						ttl = 0;
+					}
+	
+				//Make sure request doesn't re-run
 				}
 				else {
 					ttl = 0;
 				}
-
-				//Make sure request doesn't re-run
 			}
-			else {
-				ttl = 0;
-			}
-
+			
 			//Should we re-run the request?
 			if (ttl > 0) {
 				request(method, data, successCallback, failureCallback, token);
-				return true;
-			}
 
-			//Call the user defined error handler
-			if (typeof failureCallback === "function") {
-				failureCallback(response, method, data, token, xmlhttp);
 			} else {
-				throw [response, method, data, token, xmlhttp];
-			}
 
+				//Call the user defined error handler
+				if (typeof failureCallback === "function") {
+					failureCallback(response, method, data, token, xmlhttp);
+				} else {
+					throw [response, method, data, token, xmlhttp];
+				}
+			}
 		};
 
 		xmlhttp.send(
@@ -714,5 +749,8 @@ var swdapi = swdapi || function(URI, config) {
 		return new Date(Date.now() + serverTimeOffset);
 	}
 
+	function generateSalt(){
+		return (Math.random().toString(36) + '00000000000000000').slice(2, 10 + 2);
+	}
 
 };

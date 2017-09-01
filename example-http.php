@@ -26,7 +26,7 @@ $API->registerCredentialVerifier(function($user, $pass){
     
     //Obviously this would normally be a lookup of a database, but for simplicity...
     if ($user==="test" && $pass==="password"){
-        return "1";
+        return "test";
     }
     
     //Didn't match
@@ -47,9 +47,13 @@ $API->registerCredentialVerifier(function($user, $pass){
 // store the user id in "authorizedUser", as SWDAPI provides 
 // filtering around this value.
 //
+// Note this will only be called if authentication via the built in 
+// method doesn't succeed (or isn't set up).
+
 /*
 $API->registerSecurityFallback(function(){
     
+    session_start();
     return [
         "authorizedUser"=>$_SESSION['userid'];
     ];

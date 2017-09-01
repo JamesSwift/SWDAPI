@@ -13,8 +13,6 @@ require "SWDAPI.php";
 $API = new \JamesSwift\SWDAPI\SWDAPI("exampleConfig.json");
 
 
-
-
 //Make a basic request without sending any data
 $result1 = $API->request("ping");
 var_dump($result1);
@@ -39,6 +37,6 @@ var_dump($result3);
 // with your own system. No other authentication is done.
 
 
-$result4 = $API->request("auth-test", null, ["authorizedUser"=>"fred"]);
+$result4 = $API->request("auth-test", null, ["authorizedUser"=>"bob"]);
 var_dump($result4);
 

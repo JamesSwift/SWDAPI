@@ -1,6 +1,6 @@
 [submodule "submodules/PHPBootstrap"]
 	path = submodules/PHPBootstrap
-	url = git@github.com:JamesSwift/PHPBootsrap.git
+	url = https://github.com/JamesSwift/PHPBootsrap.git
 	branch = master
 [submodule "submodules/forge-sha256"]
 	path = submodules/forge-sha256

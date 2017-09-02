@@ -431,7 +431,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		
-		//Check signature
+		//Check signature (including token authentication)
 		$sigCheck = $this->_checkSignature($method, $meta, $data);
 		if ($sigCheck!==true){
 			return $sigCheck;
@@ -450,7 +450,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		if (!($response instanceof Response)){
 			return new Response(500, ["SWDAPI-Error"=>[
 				"code"=>500001,
-				"message"=>"Internal server error: The method your requested returned an invalid datatype."
+				"message"=>"Internal server error: The method you requested returned an invalid datatype."
 			]]);
 		}
 		

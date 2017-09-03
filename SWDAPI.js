@@ -637,7 +637,7 @@ var swdapi = swdapi || function(URI, config) {
 			//OK - route response to callback
 			if (xmlhttp.status === 200) {
 				if (typeof successCallback === "function") {
-					successCallback(response, method, data, xmlhttp);
+					successCallback(response, xmlhttp, method, data, (token === null ? null : token.id) );
 				}
 				return true;
 
@@ -718,9 +718,9 @@ var swdapi = swdapi || function(URI, config) {
 
 				//Call the user defined error handler
 				if (typeof failureCallback === "function") {
-					failureCallback(response, method, data, token, xmlhttp);
+					failureCallback( response, xmlhttp, method, data, (token === null ? null : token.id) );
 				} else {
-					throw [response, method, data, token, xmlhttp];
+					throw [response, xmlhttp, method, data, (token === null ? null : token.id) ];
 				}
 			}
 		};

@@ -149,7 +149,24 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Attempt to call method
-		return call_user_func($method['call'], $data, $authInfo);
+		try {
+			$response = call_user_func($method['call'], $data, $authInfo);
+		
+		//Listen for thrown responses too
+		} catch (Response $ex){
+			$response = $ex;
+		}
+		
+		//Check that we have been give the correct object
+		if (!$response instanceof Response){
+			return new Response(500, ["SWDAPI-Error"=>[
+					"code"=>500007,
+					"message"=>"The method you requested didn't return a Response object."
+				]]);
+		}
+		
+		//Return the correct response
+		return $response;
 
 	}
 	

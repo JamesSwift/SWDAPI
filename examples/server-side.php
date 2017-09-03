@@ -7,10 +7,10 @@
 
 
 //Include source
-require "../SWDAPI.php";
+require "../swdapi-server.php";
 
 //Instantiate the API and load your configuration
-$API = new \JamesSwift\SWDAPI\SWDAPI("exampleConfig.json");
+$API = new \JamesSwift\SWDAPI\Server("exampleConfig.json");
 
 
 //Make a basic request without sending any data

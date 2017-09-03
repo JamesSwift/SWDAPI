@@ -1,10 +1,10 @@
 <?php
 
 //Include code
-require "../SWDAPI.php";
+require "../swdapi-server.php";
 
 //Instantiate the API and load your configuration
-$API = new \JamesSwift\SWDAPI\SWDAPI("exampleConfig.json");
+$API = new \JamesSwift\SWDAPI\Server("exampleConfig.json");
 
 //Optionally define a function to verify user-pass login requests
 //

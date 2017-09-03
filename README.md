@@ -1,5 +1,5 @@
 <h1>
-SWDAPI - A php API framework
+SWDAPI - a simple API framework
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/3.0/deed.en_US" style="float:right;"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by-sa/3.0/88x31.png" /></a>
 </h1>
 
@@ -29,7 +29,7 @@ passes and keep the contorller execution time down to a minimum. It also just ma
 
 The SWDAPI controller makes use of OOP classes when advantageous, but doesn't demand them everywhere unlike most other projects. Classes are getting
 more efficient, but they still come with resource costs. Why define a class and instantiate it when you could simply pass an array? Hence, to define 
-API endpoints, you simply do:
+API methods/views, you simply do:
 
     "methods": {
     

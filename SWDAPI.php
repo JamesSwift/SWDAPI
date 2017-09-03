@@ -150,9 +150,10 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Attempt to call method
 		try {
+			
 			$response = call_user_func($method['call'], $data, $authInfo);
 		
-		//Listen for thrown responses too
+		//Listen for thrown responses 
 		} catch (Response $ex){
 			$response = $ex;
 		}
@@ -292,7 +293,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		$newSettings = [];
 
-		//methodSrcRoot - you can optionaly specify the root path that method['src'] will atempt to resolve from
+		//methodSrcRoot - you can optionaly specify the root path that method['src'] will attempt to resolve from
 		if (isset($settings['methodSrcRoot'])){
 			$newSettings['methodSrcRoot'] = $this->sanitizeFilePath($settings['methodSrcRoot'], false, true);
 			
@@ -737,7 +738,7 @@ class SWDAPI extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				
 				//Has the token timed-out?
 				if ($row['lastUsed']+$row['timeout']<=time()){
-					throw new \Exception("Token does has timed-out");
+					throw new \Exception("Token has timed-out");
 				}
 				
 				$q = $this->_db->prepare("UPDATE tokens SET lastUsed=:lastUsed WHERE id=:tokenID AND uid=:userID");

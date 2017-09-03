@@ -1,0 +1,48 @@
+<script type="text/javascript" src="../submodules/forge-sha256/build/forge-sha256.min.js"></script>
+<script type="text/javascript" src="../SWDAPI.js"></script>
+<script type="text/javascript">
+    
+    //Create api instance
+    var api = swdapi(
+        
+        //Set url of endpoint
+        "api.php",
+    
+        //Send optional config
+        {
+        
+            /* OPTIONAL
+             Give the client a name that the user will recognize (if possible)
+             such as "Front office", "Andrea's laptop".
+            
+             If this is set, swdapi will register this device as a client to 
+             improve the security of requests (if it hasn't already), or update
+             it's name if it has changed.
+            */
+            "setClientName":"SWDAPI Test Client - " + navigator.userAgent
+        
+        }
+    );
+    
+    //Send a basic request
+    api.request(
+        
+        //Method name
+        "ping",
+        
+        //Data to send
+        null,
+    
+        //Optional callback when response is received
+        function(data){
+            
+            //Dump response into div below
+            document.getElementById("output").innerHTML = data;
+        },
+        
+        //Optional callback when none-200 response is received
+        console.log
+    );    
+    
+</script>
+<div id="output"></div>

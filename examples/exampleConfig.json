@@ -13,22 +13,22 @@
         "ping": {
             "call": "method_ping",
             "src": [
-                "exampleMethods.php"
+                "methods.php"
             ]
         },
         "auth-test": {
             "call": "method_authtest",
             "src": [
-                "exampleMethods.php"
+                "methods.php"
             ],
             "requireAuthorizedUser": true
         },
         "plus1": {
             "call": "method_plus1",
             "src": [
-                "exampleMethods.php"
+                "methods.php"
             ]
         }
     },
-    "signedHash": "5199ba6c"
+    "signedHash": "7c90d10c"
 }

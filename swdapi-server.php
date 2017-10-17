@@ -137,9 +137,9 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Require method src file
 		if (isset($method['src']) && is_array($method['src']) && sizeof($method['src'])>0 ){
-			if (isset($settings['methodSrcRoot'])){
+			if (isset($this->settings['methodSrcRoot'])){
 				foreach ($method['src'] as $src){
-					require_once($settings['methodSrcRoot'].$src);
+					require_once($this->settings['methodSrcRoot'].$src);
 				}
 			} else {
 				foreach ($method['src'] as $src){

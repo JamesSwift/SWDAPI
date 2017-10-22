@@ -45,6 +45,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			"logout": logout,
 			"getAuthToken": getAuthToken,
 			"setDefaultToken": setDefaultToken,
+			"validateAuthToken": validateAuthToken,
 			"request": request,
 			"serverDate": getServerDate,
 			"registerClient": registerClient,
@@ -153,7 +154,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		if (meta.token !== undefined && token.id !== undefined && token.secret !== undefined) {
 			keyPlain += token.id + token.secret
 		}
-
+		
 		//Join the dots and hash
 		keyEnc = forge_sha256(text + keyPlain);
 
@@ -362,6 +363,23 @@ swdapi.client = swdapi.client || function(URI, config) {
 			return token;
 		}
 		return false;
+	}
+	
+	function validateAuthToken(token, callback){
+		
+		defaultFor(token, defaultToken);
+		
+		if (!checkTokenFormat(token)){
+			return false;
+		}
+		
+		return request("swdapi/validateAuthToken", null, 
+			function(){
+				callback(true);
+			},
+			function(error){
+				callback(error);
+			}, token);
 	}
 
 	function checkTokenFormat(token) {
@@ -659,7 +677,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			
 			if (ttl > 0 ){
 				//Is this a SWDAPI error
-				if (typeof response !== "string" && response['SWDAPI-Error'] !== undefined && response['SWDAPI-Error']['code'] !== undefined) {
+				if (typeof response !== "string" && response['SWDAPI-Error'] !== undefined && response['SWDAPI-Error']['code'] !== undefined && method !== "swdapi/validateAuthToken") {
 	
 					var code = response['SWDAPI-Error']['code'];
 	

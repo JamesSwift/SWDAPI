@@ -30,6 +30,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		"swdapi/invalidateAuthToken"=> [
 			"call"=>[$this, "_pdm__invalidateAuthToken"]
 		],
+		"swdapi/validateAuthToken"=> [
+			"call"=>[$this, "_pdm__validateAuthToken"],
+			"requireAuthorizedUser" => true
+		],
 		
 	];
 	}
@@ -671,7 +675,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				
 				return new Response(403, ["SWDAPI-Error"=>[
 					"code"=>403008,
-					"message"=>"The meta.token.id you specified doesn't exist or has timed out."
+					"message"=>"The meta.token you specified doesn't exist or has timed out."
 				]]);
 			
 			}	
@@ -680,7 +684,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Hash the text
 		$keyEnc = hash("sha256", $text.$keyPlain);
-		
+
 		if ($oldKey!==$keyEnc){
 			return new Response(400, ["SWDAPI-Error"=>[
 				"code"=>400014,
@@ -1073,6 +1077,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			]]);
 		}
 		
+	}
+	
+	protected function _pdm__validateAuthToken($data, $authInfo){
+		return new Response(200, true);
 	}
 
 }

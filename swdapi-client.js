@@ -191,7 +191,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 	//Set the defaultToken to null
 	function logout(callback) {
 
-		var handler, tokenCopy = defaultToken;
+		var handler;
 		
 		callback = defaultFor(callback, null);
 		
@@ -199,10 +199,10 @@ swdapi.client = swdapi.client || function(URI, config) {
 		handler = function(response) {
 			if (response === true) {
 				console.log("Logout completed");
+				defaultToken = setDefaultToken(null);
 			}
 			else {
 				console.log("Logout failed.");
-				defaultToken = setDefaultToken(tokenCopy);
 			}
 			if (typeof callback === "function") {
 				callback(response);
@@ -219,8 +219,6 @@ swdapi.client = swdapi.client || function(URI, config) {
 				"id": defaultToken.id
 			}, handler, handler, defaultToken);
 			
-			//Remove token in case another request attempts to use it
-			defaultToken = setDefaultToken(null);
 
 		//Not logged in, just run callback with true
 		}

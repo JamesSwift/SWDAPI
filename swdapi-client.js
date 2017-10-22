@@ -24,6 +24,9 @@ swdapi.client = swdapi.client || function(URI, config) {
 	if (Number.isInteger === undefined) {
 		throw "SWDAPI: Required component 'Number.isInteger' not defined.";
 	}
+	if (Array.prototype.indexOf === undefined) {
+		throw "SWDAPI: Required component 'Array.prototype.indexOf' not defined.";
+	}
 	if (console.log === undefined) {
 		throw "SWDAPI: Required component 'console.log' not defined.";
 	}
@@ -35,6 +38,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 	var endpointURI = URI,
 		serverTimeOffset = 0,
 		defaultToken = null,
+		listeners = {"defaultToken": []},
 		autoReregister = (typeof config['autoReregister'] === "boolean" ? config['autoReregister'] : true),
 		fetchClientData = (typeof config['fetchClientData'] === "function" ? config['fetchClientData'] : fetchClientData_Default),
 		storeClientData = (typeof config['storeClientData'] === "function" ? config['storeClientData'] : storeClientData_Default),
@@ -49,6 +53,8 @@ swdapi.client = swdapi.client || function(URI, config) {
 			"request": request,
 			"serverDate": getServerDate,
 			"registerClient": registerClient,
+			"addListener": addListener,
+			"removeListener": removeListener,
 			"setFetchClientDataHandler": function(handler) {
 				if (typeof handler === "function") {
 					fetchClientData = handler;
@@ -360,6 +366,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		
 		if (token === null || checkTokenFormat(token)){
 			defaultToken = token;
+			callListener("defaultToken", token);
 			return token;
 		}
 		return false;
@@ -760,6 +767,58 @@ swdapi.client = swdapi.client || function(URI, config) {
 			})
 		);
 
+		return true;
+	}
+	
+	function addListener(event, callback){
+		
+		if (["defaultToken"].indexOf(event) === -1){
+			throw "addListener: Invalid event type";
+		}
+		
+		if (typeof callback !== "function"){
+			throw "addListener: Callback isn't a function";
+		}
+		
+		if (listeners[event].indexOf(callback)!==-1){
+			return true;
+		}
+		
+		listeners[event].push(callback);
+		
+		return true;
+		
+	}
+	
+	function removeListener(event, callback){
+	
+		if (["defaultToken"].indexOf(event) === -1){
+			throw "addListener: Invalid event type";
+		}
+		
+		//Does the callback exist?
+		if (listeners[event].indexOf(callback) === -1){
+			return false;
+		}
+		
+		//Remove the listener
+		listeners[event].splice(listeners[event].indexOf(callback), 1);
+		
+		return true;
+	}
+	
+	function callListener(event, response){
+		
+		if (typeof listeners[event] !== "object"){
+			return false;
+		}
+		
+		for (var prop in listeners[event]) {
+			if (listeners[event].hasOwnProperty(prop) && typeof listeners[event][prop] === "function"){
+				listeners[event][prop](response);
+			}
+		}
+		
 		return true;
 	}
 

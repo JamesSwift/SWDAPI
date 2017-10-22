@@ -21,9 +21,6 @@ swdapi.client = swdapi.client || function(URI, config) {
 	if (XMLHttpRequest === undefined) {
 		throw "SWDAPI: Required component 'XMLHttpRequest' not defined.";
 	}
-	if (Date.now === undefined) {
-		throw "SWDAPI: Required component 'Date.now' not defined.";
-	}
 	if (Number.isInteger === undefined) {
 		throw "SWDAPI: Required component 'Number.isInteger' not defined.";
 	}
@@ -47,6 +44,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			"login": login,
 			"logout": logout,
 			"getAuthToken": getAuthToken,
+			"setDefaultToken": setDefaultToken,
 			"request": request,
 			"serverDate": getServerDate,
 			"registerClient": registerClient,
@@ -172,7 +170,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 
 			//If login successfull, store the token for future use
 			if (typeof token == "object") {
-				defaultToken = token;
+				defaultToken = setDefaultToken(token);
 			}
 
 			//Execute callback whether login successfull or not
@@ -197,7 +195,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			}
 			else {
 				console.log("Logout failed.");
-				defaultToken = tokenCopy;
+				defaultToken = setDefaultToken(tokenCopy);
 			}
 			if (typeof callback === "function") {
 				callback(response);
@@ -215,7 +213,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			}, handler, handler, defaultToken);
 			
 			//Remove token in case another request attempts to use it
-			defaultToken = null;
+			defaultToken = setDefaultToken(null);
 
 		//Not logged in, just run callback with true
 		}
@@ -356,12 +354,21 @@ swdapi.client = swdapi.client || function(URI, config) {
 		request("swdapi/getAuthToken", data, successHandler, failureHandler, null);
 		
 	}
+	
+	function setDefaultToken(token){
+		
+		if (token === null || checkToken(token)){
+			defaultToken = token;
+			return token;
+		}
+		return false;
+	}
 
 	function checkToken(token) {
 
 		//First, is there something to test?
 		if (token===undefined || typeof token !== "object"){
-			console.log("Invalid token: must be object", token);
+			console.log("Invalid token: must be object");
 			return false;
 		}
 		
@@ -690,7 +697,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 							});
 							
 							//Remove the default token
-							defaultToken = null;
+							defaultToken = setDefaultToken(null);
 							
 							//Try to register the client again
 							registerClient();

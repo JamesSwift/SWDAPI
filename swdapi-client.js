@@ -357,14 +357,14 @@ swdapi.client = swdapi.client || function(URI, config) {
 	
 	function setDefaultToken(token){
 		
-		if (token === null || checkToken(token)){
+		if (token === null || checkTokenFormat(token)){
 			defaultToken = token;
 			return token;
 		}
 		return false;
 	}
 
-	function checkToken(token) {
+	function checkTokenFormat(token) {
 
 		//First, is there something to test?
 		if (token===undefined || typeof token !== "object"){
@@ -622,7 +622,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			ttl = 5;
 
 		//Validate "token" object
-		if (token!==null && checkToken(token)!==true) {
+		if (token!==null && checkTokenFormat(token)!==true) {
 			throw "The authentication token you passed is in an invalid format. Request not sent.";
 		}
 

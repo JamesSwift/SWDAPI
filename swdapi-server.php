@@ -464,7 +464,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Handle auth
 		$auth=null;
 		if (isset($meta['token']['uid']) &&  is_string($meta['token']['uid'])){
-			$auth = ['authorizedUser'=>\JamesSwift\SWDAPI\Credential($meta['token']['uid'], $meta['token']['permissions'])];
+			$auth = ['authorizedUser'=> new \JamesSwift\SWDAPI\Credential($meta['token']['uid'], $meta['token']['permissions'])];
 		}
 		
 		//Make request

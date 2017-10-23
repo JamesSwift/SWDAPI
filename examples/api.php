@@ -23,9 +23,13 @@ $API = new \JamesSwift\SWDAPI\Server("exampleConfig.json");
 $API->registerCredentialVerifier(function($user, $pass, $requestedPermissions, $clientInfo){
     
     //Obviously this would normally be a lookup of a database, but for simplicity...
-    if ($user==="test" && $pass==="password"){
-        new \JamesSwift\SWDAPI\Credential(123, ["admin"=>true]);
+    if ($user==="test" && $pass==="password" && $requestedPermissions['admin']===true){
+        return new \JamesSwift\SWDAPI\Credential(123, ["admin"=>true]);
     }
+    
+    if ($user==="test" && $pass==="password"){
+        return new \JamesSwift\SWDAPI\Credential(123);
+    }    
     
     //Didn't match
     return false;

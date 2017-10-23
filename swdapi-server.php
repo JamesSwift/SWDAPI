@@ -714,7 +714,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		];
 		
 		//Attempt to add row
-		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, expires=:expires, timeout=:timeout, lastUsed=:lastUsed");
+		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, permissions=:permissions, expires=:expires, timeout=:timeout, lastUsed=:lastUsed");
 		$q->execute($token);
 		$tokenID = (int)$this->_db->lastInsertId();
 		
@@ -993,7 +993,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				"message"=>"Forbidden: The client ID you specified doesn't exist"
 			]]);
 		}
-			
+		
 		//Reconstruct the signature
 		$newSig = hash("sha256", json_encode([
 			$data['user'],
@@ -1017,22 +1017,17 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Check credentials
 		$credentialResult = call_user_func($this->_credentialVerifier, $data['user'], $data['pass'], $data['requestPermissions'], $clientData);
 		
-		if ($credentialResult===false || !is_string($credentialResult['id']) ){
+		if ($credentialResult===false || !is_a($credentialResult, "\JamesSwift\SWDAPI\Credential") || is_string($credentialResult)->id){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,
 				"message"=>"Forbidden: The user or password you specified is wrong."
 			]]);			
 		}
 		
-		//Set default permissions
-		if (isset($credentialResult['permissions'])){
-			$credentialResult['permissions'] = null;
-		}
-		
 		//Register a token (secret and id)
 		try {
 			
-			$token = $this->_createAuthToken($credentialResult['id'], $clientData['id'], $credentialResult['permissions'], $expiry, $timeout);
+			$token = $this->_createAuthToken($credentialResult->id, $clientData['id'], $credentialResult->permissions, $expiry, $timeout);
 	
 		} catch (\Exception $e){
 			
@@ -1040,6 +1035,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				"code"=>500005,
 				"message"=>"Server Error: Could not create token in DB."
 			]]);
+			
 		}
 		
 		//Create a singature of it

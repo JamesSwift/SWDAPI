@@ -9,24 +9,22 @@ $API = new \JamesSwift\SWDAPI\Server("exampleConfig.json");
 //Optionally define a function to verify user-pass login requests
 //
 // If the $user and $pass that are passed in are correct, the function
-// should return a string with the user id. This may be the same as the
-// $user variable passed in, or it may be different (such as a numeric UID).
-// Note that it must be of type string, or it will be assumed the login failed.
-// This returned value will be stored and supplied to to called methods as
+// should return aan instance of \JamesSwift\SWDAPI\Credential(ID, PERMISSIONS)
+//
+// This returned data will be stored and supplied to to called methods as
 // part of the array in the second parameter: 'authorizedUser'
 //
-// If the credentials don't match the function should return false
+// If the credentials don't match, the function should return false
 //
 // This function isn't called on every request, rather only on requests to 
-// "swdapi/getAuthToken".
-// If the login is successfull, a token is sent to the client which will then be
-// pased back on each subsequent request.
+// "swdapi/getAuthToken". If the login is successfull, a token is sent to the 
+// client which will then be pased back on each subsequent request.
 
-$API->registerCredentialVerifier(function($user, $pass){
+$API->registerCredentialVerifier(function($user, $pass, $requestedPermissions, $clientInfo){
     
     //Obviously this would normally be a lookup of a database, but for simplicity...
     if ($user==="test" && $pass==="password"){
-        return "test";
+        new \JamesSwift\SWDAPI\Credential(123, ["admin"=>true]);
     }
     
     //Didn't match
@@ -44,7 +42,7 @@ $API->registerCredentialVerifier(function($user, $pass){
 // It function should return an array of security information. This
 // will be passed to any called method as the second parameter
 // It can contain any data you want, but for convience try to 
-// store the user id in "authorizedUser", as SWDAPI provides 
+// store the user credential in "authorizedUser", as SWDAPI provides 
 // filtering around this value.
 //
 // Note this will only be called if authentication via the built in 
@@ -55,7 +53,7 @@ $API->registerSecurityFallback(function(){
     
     session_start();
     return [
-        "authorizedUser"=>$_SESSION['userid'];
+        "authorizedUser"=>new \JamesSwift\SWDAPI\Credential($_SESSION['userid']);
     ];
     
 });

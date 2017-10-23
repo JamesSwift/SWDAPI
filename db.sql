@@ -23,8 +23,9 @@ CREATE TABLE `tokens` (
   `clientID` bigint(20) NOT NULL,
   `uid` varchar(64) NOT NULL,
   `secret` char(64) NOT NULL,
+  `permissions` text,
   `expires` bigint(20) NOT NULL,
   `timeout` int(11) NOT NULL,
   `lastUsed` bigint(9) NOT NULL,
   UNIQUE KEY `id` (`id`)
-) ENGINE=InnoDB  DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=latin1;

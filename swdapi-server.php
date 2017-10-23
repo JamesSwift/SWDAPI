@@ -28,7 +28,8 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			"call"=>[$this, "_pdm__getAuthToken"]
 		],
 		"swdapi/invalidateAuthToken"=> [
-			"call"=>[$this, "_pdm__invalidateAuthToken"]
+			"call"=>[$this, "_pdm__invalidateAuthToken"],
+			"requireAuthorizedUser" => true
 		],
 		"swdapi/validateAuthToken"=> [
 			"call"=>[$this, "_pdm__validateAuthToken"],
@@ -130,7 +131,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Does this method require an authorized user?
 		if (isset($method['requireAuthorizedUser']) && $method['requireAuthorizedUser']===true){
 			
-			if (!isset($authInfo['authorizedUser']) || $authInfo['authorizedUser']==null ){
+			if (!isset($authInfo['authorizedUser']) || !is_a($authInfo['authorizedUser'], "\JamesSwift\SWDAPI\Credential") && !is_string($authInfo['authorizedUser']->id) ){
 				return new Response(403, ["SWDAPI-Error"=>[
 					"code"=>403001,
 					"message"=>"The method you requested requires authentication."
@@ -239,7 +240,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Check requireAuthorizedUser is bool
 		if (isset($method['requireAuthorizedUser'])){
 			if (!is_bool($method['requireAuthorizedUser'])){
-				throw new \Exception("A method 'requireAuthorizedUser' definition must be type boolean if it exists.");
+				throw new \Exception("A method's 'requireAuthorizedUser' definition must be type boolean if it exists.");
 			}
 			if ($method['requireAuthorizedUser']===true){
 				$newMethod['requireAuthorizedUser']=true;
@@ -463,7 +464,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Handle auth
 		$auth=null;
 		if (isset($meta['token']['uid']) &&  is_string($meta['token']['uid'])){
-			$auth = ['authorizedUser'=>$meta['token']['uid']];
+			$auth = ['authorizedUser'=>\JamesSwift\SWDAPI\Credential($meta['token']['uid'], $meta['token']['permissions'])];
 		}
 		
 		//Make request
@@ -696,7 +697,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 	}
 	
-	protected function _createAuthToken($userID, $clientID, $expires, $timeout){
+	protected function _createAuthToken($userID, $clientID, $permissions, $expires, $timeout){
 		
 		//Make sure qe are connected to DB
 		$this->_connectDB();
@@ -705,6 +706,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$token = [
 			"uid"=>$userID,
 			"secret"=>hash("sha256", openssl_random_pseudo_bytes(200)),
+			"permissions"=>json_encode($permissions),
 			"expires"=>$expires,
 			"timeout"=>$timeout,
 			"clientID"=>$clientID,
@@ -719,6 +721,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Build full token data and return it
 		$token['id']=$tokenID;
 		unset($token['lastUsed']);
+		$token['permissions']=$permissions;
 		
 		return $token;
 			
@@ -924,6 +927,13 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			]]);
 		}
 		
+		//Check requestPermissions was specified
+		if (isset($data['requestPermissions']) ){
+			//No valid formats specified yet
+		} else {
+			$data['requestPermissions'] = null;
+		}
+		
 		//Check requestExpiry is valid
 		if (isset($data['requestExpiry']) && $data['requestExpiry']!==null){
 			$expiry = $data['requestExpiry'];
@@ -988,6 +998,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$newSig = hash("sha256", json_encode([
 			$data['user'],
 			$data['pass'],
+			$data['requestPermissions'],
 			$data['requestExpiry'],
 			$data['requestTimeout'],
 			$data['salt'],
@@ -1004,18 +1015,24 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Check credentials
-		$userID = call_user_func($this->_credentialVerifier, $data['user'], $data['pass']);
-		if ($userDetails===false || !is_string($userID) ){
+		$credentialResult = call_user_func($this->_credentialVerifier, $data['user'], $data['pass'], $data['requestPermissions'], $clientData);
+		
+		if ($credentialResult===false || !is_string($credentialResult['id']) ){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,
 				"message"=>"Forbidden: The user or password you specified is wrong."
 			]]);			
 		}
 		
+		//Set default permissions
+		if (isset($credentialResult['permissions'])){
+			$credentialResult['permissions'] = null;
+		}
+		
 		//Register a token (secret and id)
 		try {
 			
-			$token = $this->_createAuthToken($userID, $clientData['id'], $expiry, $timeout);
+			$token = $this->_createAuthToken($credentialResult['id'], $clientData['id'], $credentialResult['permissions'], $expiry, $timeout);
 	
 		} catch (\Exception $e){
 			
@@ -1034,14 +1051,6 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected function _pdm__invalidateAuthToken($data, $authInfo){
 		
-		//Check that we are authorized
-		if (!isset($authInfo['authorizedUser']) || !is_string($authInfo['authorizedUser'])){
-			return new Response(403, ["SWDAPI-Error"=>[
-				"code"=>403013,
-				"message"=>"Access denied: You must be authenticated to invalidate an auth token."
-			]]);	
-		}
-		
 		//Check some id was specified
 		if (!isset($data['id']) || !is_int($data['id'])){
 			return new Response(400, ["SWDAPI-Error"=>[
@@ -1053,7 +1062,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Attempt to fetch token (to make sure we have access)
 		try {
 				//Fetch token
-				$tokenData = $this->_fetchAuthToken($data['id'], $authInfo['authorizedUser']);
+				$tokenData = $this->_fetchAuthToken($data['id'], $authInfo['authorizedUser']->id);
 		
 			
 		} catch(\Exception $e){
@@ -1086,26 +1095,38 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 }
 
 class Response {
-	 public $status;
-	 public $data = null;
+	public $status;
+	public $data = null;
+	
+	public function __construct($status=200, $data=null) {
+		$this->status = $status;
+		$this->data = $data;
+	}
+	
+	public function sendHttpResponse(){
+		http_response_code($this->status);
+		
+		//Json
+		if (is_array($this->data) || is_bool($this->data)){
+		 header('Content-Type: application/json');
+		 print json_encode($this->data, JSON_UNESCAPED_SLASHES);
+		 
+		//Plain text
+		} else {
+		 header('Content-Type: text/plain');
+		 print $this->data;
+		}
+	}
+}
+
+class Credential {
+	
+	public $id;
+	public $permissions = null;
+	
+	public function __construct($id, $permissions=null) {
+		$this->id = (string)$id;
+		$this->permissions = $permissions;
+	}
 	 
-	 public function __construct($status=200, $data=null) {
-		 $this->status = $status;
-		 $this->data = $data;
-	 }
-	 
-	 public function sendHttpResponse(){
-	 	http_response_code($this->status);
-	 	
-	 	//Json
-	 	if (is_array($this->data) || is_bool($this->data)){
-	 		header('Content-Type: application/json');
-	 		print json_encode($this->data, JSON_UNESCAPED_SLASHES);
-	 		
-	 	//Plain text
-	 	} else {
-	 		header('Content-Type: text/plain');
-	 		print $this->data;
-	 	}
-	 }
 }

@@ -169,7 +169,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 
 
 	//Aquire a new AuthToken and set it as defaultToken
-	function login(user, pass, callback) {
+	function login(user, pass, callback, requestPermissions) {
 
 		callback = defaultFor(callback, null);
 
@@ -185,7 +185,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 				callback(token);
 			}
 
-		});
+		}, requestPermissions);
 	}
 
 	//Set the defaultToken to null
@@ -254,11 +254,12 @@ swdapi.client = swdapi.client || function(URI, config) {
 	// if (reponse['SWDAPI-Error']===undefined){ //all good
 	
 
-	function getAuthToken(user, pass, callback, requestExpiry, requestTimeout) {
+	function getAuthToken(user, pass, callback, requestPermissions, requestExpiry, requestTimeout) {
 
 		var clientData, data, successHandler, failureHandler;
 		
 		callback = defaultFor(callback, null);
+		requestPermissions = defaultFor(requestPermissions, null);
 		requestExpiry = defaultFor(requestExpiry, null);
 		requestTimeout = defaultFor(requestTimeout, null);
 
@@ -306,12 +307,14 @@ swdapi.client = swdapi.client || function(URI, config) {
 			"user":user,
 			"pass":pass,
 			"clientID":clientData.id,
+			"requestPermissions":requestPermissions,
 			"requestExpiry":requestExpiry,
 			"requestTimeout":requestTimeout,
 			"salt":salt,
 			"signature":forge_sha256(JSON.stringify([
 					user,
 					pass,
+					requestPermissions,
 					requestExpiry,
 					requestTimeout,
 					salt,

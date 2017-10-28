@@ -38,6 +38,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 	var endpointURI = URI,
 		serverTimeOffset = 0,
 		defaultToken = null,
+		defaultClientName,
 		listeners = {"defaultToken": []},
 		autoReregister = (typeof config['autoReregister'] === "boolean" ? config['autoReregister'] : true),
 		fetchClientData = (typeof config['fetchClientData'] === "function" ? config['fetchClientData'] : fetchClientData_Default),
@@ -83,8 +84,15 @@ swdapi.client = swdapi.client || function(URI, config) {
 		
 	//Check if there is a default name for the client which we should use to register the client with
 	} else if (config.defaultClientName !== undefined && typeof config.defaultClientName === "string") {
-	
-		//TODO
+		
+		defaultClientName = config.defaultClientName;
+		
+		//Is it different from what we have stored?
+		var tmpData = fetchClientData();
+		if (typeof tmpData !== "object" || tmpData.name === undefined ||  tmpData.secret === undefined || tmpData.id === undefined) {
+			//Register the client
+			registerClient();
+		}
 	}
 	
 
@@ -480,6 +488,10 @@ swdapi.client = swdapi.client || function(URI, config) {
 			//Use the name we already have registered
 			sendData.name = currentData.name.substring(0, 140);
 		}
+		else if (typeof defaultClientName === "string"){
+			//Use the default name specified in constructor
+			sendData.name = defaultClientName.substring(0, 140);
+		}
 		else {
 			throw "Cannot register a client without a name. No name is stored and no name was passed to registerClient()";
 		}
@@ -513,10 +525,10 @@ swdapi.client = swdapi.client || function(URI, config) {
 
 
 			//No, so we should be getting a new secret back	
+			} else if (responseData.secret !== undefined) {
+				newClientData.secret = responseData.secret;
 			} else {
-				if (responseData.secret !== undefined) {
-					newClientData.secret = responseData.secret;
-				}
+				throw "Failed to register client: no secret returned by server.";
 			}
 
 

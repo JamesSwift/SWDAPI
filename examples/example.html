@@ -15,11 +15,20 @@
              Give the client a name that the user will recognize (if possible)
              such as "Front office", "Andrea's laptop".
             
-             If this is set, swdapi will register this device as a client to 
-             improve the security of requests (if it hasn't already), or update
-             it's name if it has changed.
+             SWDAPI will then register the client with this name if it is not already
+             registered. If it has already been registered, no action is taken.
             */
+            "defaultClientName":"SWDAPI Test Client - " + navigator.userAgent
+            
+            
+            /* OPTIONAL
+             Forceably update the client name (and register the client if not already registered)
+            
+             If the client has specified their own name, it will be overwritten. If the 
+             name matches what is stored locally, no update will be sent to the server.
+            
             "setClientName":"SWDAPI Test Client - " + navigator.userAgent
+            */
         
         }
     );

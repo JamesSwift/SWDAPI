@@ -71,7 +71,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 			}
 		};
 
-	//Check if any client info was passed to the constructor
+	//Check if we should register and/or set the name of the client
 	if (config.setClientName !== undefined && typeof config.setClientName === "string") {
 
 		//Is it different from what we have stored?
@@ -80,7 +80,13 @@ swdapi.client = swdapi.client || function(URI, config) {
 			//Register the new name
 			registerClient(config.setClientName);
 		}
+		
+	//Check if there is a default name for the client which we should use to register the client with
+	} else if (config.defaultClientName !== undefined && typeof config.defaultClientName === "string") {
+	
+		//TODO
 	}
+	
 
 	//If the serverTimestamp was specified use it
 	if (config['serverTimestamp'] !== undefined) {

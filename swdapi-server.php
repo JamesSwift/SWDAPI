@@ -10,7 +10,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected $methods;
 	protected $_securityFallback;
 	protected $_credentialVerifier;
-	protected $_db;
+	public $DB;
 	protected $_predefinedMethods;
 	
 	//////////////////////////////////////////////////////////////////////
@@ -74,10 +74,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		return [$this->settings, $this->methods];
 	}
 	
-	protected function _connectDB(){
+	public function connectDB(){
 		
 		//Are we already connected
-		if ($this->_db instanceof \PDO){
+		if ($this->DB instanceof \PDO){
 			return true;
 		}
 		
@@ -88,7 +88,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Attempt to connect
 		
-		$this->_db  = new \PDO(
+		$this->DB  = new \PDO(
 			$this->settings['db']['dsn'], 
 			$this->settings['db']['user'], 
 			$this->settings['db']['pass'], 
@@ -556,16 +556,16 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _registerNonce($nonce, $expires){
 		
 		//Make sure qe are connected to DB
-		$this->_connectDB();
+		$this->connectDB();
 		
 		//Clear old nonce
-		$q = $this->_db->prepare("DELETE FROM nonce WHERE expires < :timestamp");
+		$q = $this->DB->prepare("DELETE FROM nonce WHERE expires < :timestamp");
 		$q->execute(["timestamp"=>time()]);
 		
 		//Attempt to insert nonce
 		try {
 			
-			$q = $this->_db->prepare("INSERT INTO nonce SET value=:nonce, expires=:timestamp");
+			$q = $this->DB->prepare("INSERT INTO nonce SET value=:nonce, expires=:timestamp");
 			$q->execute(["nonce"=>$nonce, "timestamp"=>$expires]);	
 			return true;
 			
@@ -584,10 +584,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _getClientData($id){
 		
 		//Make sure qe are connected to DB
-		$this->_connectDB();
+		$this->connectDB();
 		
 		//Attempt to fetch id
-		$q = $this->_db->prepare("SELECT * FROM clients WHERE id=:id");
+		$q = $this->DB->prepare("SELECT * FROM clients WHERE id=:id");
 		$q->execute(["id"=>$id]);
 		$row = $q->fetch(\PDO::FETCH_ASSOC);
 		
@@ -700,7 +700,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _createAuthToken($userID, $clientID, $permissions, $expires, $timeout){
 		
 		//Make sure qe are connected to DB
-		$this->_connectDB();
+		$this->connectDB();
 		
 		//Build token
 		$token = [
@@ -714,9 +714,9 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		];
 		
 		//Attempt to add row
-		$q = $this->_db->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, permissions=:permissions, expires=:expires, timeout=:timeout, lastUsed=:lastUsed");
+		$q = $this->DB->prepare("INSERT INTO tokens SET clientID=:clientID, uid=:uid, secret=:secret, permissions=:permissions, expires=:expires, timeout=:timeout, lastUsed=:lastUsed");
 		$q->execute($token);
-		$tokenID = (int)$this->_db->lastInsertId();
+		$tokenID = (int)$this->DB->lastInsertId();
 		
 		//Build full token data and return it
 		$token['id']=$tokenID;
@@ -730,10 +730,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _fetchAuthToken($tokenID, $userID, $updateLastUsed=true){
 		
 		//Make sure qe are connected to DB
-		$this->_connectDB();
+		$this->connectDB();
 
 		//Attempt to fetch row
-		$q = $this->_db->prepare("SELECT * FROM tokens WHERE id=:tokenID AND uid=:userID");
+		$q = $this->DB->prepare("SELECT * FROM tokens WHERE id=:tokenID AND uid=:userID");
 		$q->execute(["tokenID"=>$tokenID, "userID"=>$userID]);
 		
 		$row = $q->fetch(\PDO::FETCH_ASSOC);
@@ -748,7 +748,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 					throw new \Exception("Token has timed-out");
 				}
 				
-				$q = $this->_db->prepare("UPDATE tokens SET lastUsed=:lastUsed WHERE id=:tokenID AND uid=:userID");
+				$q = $this->DB->prepare("UPDATE tokens SET lastUsed=:lastUsed WHERE id=:tokenID AND uid=:userID");
 				$q->execute(["lastUsed"=>time(), "tokenID"=>$tokenID, "userID"=>$userID]);	
 			}
 			
@@ -763,10 +763,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _invalidateAuthToken($tokenID){
 		
 		//Make sure qe are connected to DB
-		$this->_connectDB();
+		$this->connectDB();
 
 		//Attempt to delete row
-		$q = $this->_db->prepare("DELETE FROM tokens WHERE id=:tokenID");
+		$q = $this->DB->prepare("DELETE FROM tokens WHERE id=:tokenID");
 		$q->execute(["tokenID"=>$tokenID]);
 		
 		return true;	
@@ -778,7 +778,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	protected function _pdm__registerClient($data, $authInfo){
 		
 		//Make sure qe are connected to DB
-		$this->_connectDB();
+		$this->connectDB();
 			
 		$clientData = null;
 		
@@ -837,7 +837,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 
 			try {
 				//Attempt to store new name
-				$q = $this->_db->prepare("UPDATE clients SET name=:name WHERE id=:id");
+				$q = $this->DB->prepare("UPDATE clients SET name=:name WHERE id=:id");
 				$q->execute([
 						"name"=>$name,
 						"id"=>$data['id']
@@ -864,7 +864,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 
 			try {
 				//Attempt to create new client
-				$q = $this->_db->prepare("INSERT INTO clients SET name=:name, secret=:secret");
+				$q = $this->DB->prepare("INSERT INTO clients SET name=:name, secret=:secret");
 				$r = $q->execute([
 						"name"=>$name,
 						"secret"=>$secret
@@ -872,7 +872,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				
 				//Create response
 				$response['name'] = $name;
-				$response['id'] = $this->_db->lastInsertId();
+				$response['id'] = $this->DB->lastInsertId();
 				$response['secret'] = $secret;
 				
 				//Create signature

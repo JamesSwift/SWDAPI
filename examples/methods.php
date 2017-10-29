@@ -13,7 +13,7 @@ function method_authtest($data, $authInfo){
     
     return new \JamesSwift\SWDAPI\Response(
         200, 
-        "Welcome back ".$authInfo['authorizedUser']
+        "Welcome back ".$authInfo->authorizedUser
     );
     
 }

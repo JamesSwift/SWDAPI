@@ -38,7 +38,18 @@ var_dump($result3);
 
 
 $result4 = $API->request("auth-test", null, [
-    "authorizedUser"=>\JamesSwift\SWDAPI\Credential("bob")
+    "authorizedUser"=> new \JamesSwift\SWDAPI\Credential("bob")
 ]);
 var_dump($result4);
+
+
+
+// SWDAPI also provides access to it's database connection via $API->DB
+// This points to an instance of PDO.
+
+$API->connectDB();
+
+foreach ($API->DB->query("show tables") as $row){
+    var_dump($row);   
+}
 

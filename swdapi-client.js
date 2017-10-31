@@ -18,21 +18,30 @@ swdapi.client = swdapi.client || function(URI, config) {
 	// Begin constructor
 
 	//Test that needed components exist
-	if (XMLHttpRequest === undefined) {
+	if (typeof JSON === "undefined") {
+		throw "SWDAPI: Required component 'JSON' not defined. Please include an external JSON library.";
+	}	
+	if (typeof XMLHttpRequest === "undefined") {
 		throw "SWDAPI: Required component 'XMLHttpRequest' not defined.";
 	}
-	if (Number.isInteger === undefined) {
-		throw "SWDAPI: Required component 'Number.isInteger' not defined.";
-	}
-	if (Array.prototype.indexOf === undefined) {
-		throw "SWDAPI: Required component 'Array.prototype.indexOf' not defined.";
-	}
-	if (console.log === undefined) {
-		throw "SWDAPI: Required component 'console.log' not defined.";
-	}
-	if (forge_sha256 === undefined) {
+	if (typeof forge_sha256 === "undefined") {
 		throw "SWDAPI: Required component 'forge_sha256' not defined. Did you forget to include it?";
+	}	
+	Number.isInteger = Number.isInteger || function(value) {
+	    return typeof value === "number" &&
+	           isFinite(value) &&
+	           Math.floor(value) === value;
+	};
+	if (!Array.prototype.indexOf){
+		Array.prototype.indexOf=function(b){var a=this.length>>>0;var c=Number(arguments[1])||0;c=(c<0)?Math.ceil(c):Math.floor(c);if(c<0){c+=a}for(;c<a;c++){if(c in this&&this[c]===b){return c}}return -1}
 	}
+	if (typeof window.console === "undefined"){
+		window.console = {};
+	}
+	if (typeof console.log === "undefined") {
+		console.log = function(){};
+	}
+
 
 	//Variable for this API instance
 	var endpointURI = URI,
@@ -506,7 +515,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 
 			var newClientData = {
 					"name": responseData.name,
-					"id": responseData.id,
+					"id": responseData.id
 				},
 				ourSig;
 
@@ -574,7 +583,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 				delete currentData.id;
 				delete currentData.secret;
 				storeClientData({
-					"name": sendData.name,
+					"name": sendData.name
 				});
 				
 				//Rewrite send data to remove corrupt info
@@ -737,7 +746,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 							//Clear out all but the name from the Client Data
 							var tempData = fetchClientData();
 							storeClientData({
-								"name": tempData.name,
+								"name": tempData.name
 							});
 							
 							//Remove the default token

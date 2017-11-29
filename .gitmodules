@@ -2,3 +2,6 @@
 	path = submodules/PHPBootstrap
 	url = https://github.com/JamesSwift/PHPBootsrap.git
 	branch = master
+[submodule "submodules/jsSHA"]
+	path = submodules/jsSHA
+	url = https://github.com/Caligatio/jsSHA.git

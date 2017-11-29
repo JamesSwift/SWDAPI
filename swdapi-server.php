@@ -605,7 +605,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		unset($meta['signature']);
 		
 		//Reconstruct the signature from our end
-		$text = json_encode([$method,$meta,$data], JSON_UNESCAPED_SLASHES);
+		$text = json_encode([$method,$meta,$data], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		$keyPlain = "swdapi";
 		
 		//Add the client signature if sent
@@ -706,7 +706,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$token = [
 			"uid"=>$userID,
 			"secret"=>hash("sha256", openssl_random_pseudo_bytes(200)),
-			"permissions"=>json_encode($permissions),
+			"permissions"=>json_encode($permissions, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
 			"expires"=>$expires,
 			"timeout"=>$timeout,
 			"clientID"=>$clientID,
@@ -1004,7 +1004,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			$data['salt'],
 			$data['clientID'],
 			$clientData['secret']
-		]));
+		]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		
 		//Compare the signature to our signature
 		if ($newSig!==$data['signature']){
@@ -1039,7 +1039,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Create a singature of it
-		$signature = hash("sha256", json_encode([$token, $data['salt'], $clientData['secret']]));
+		$signature = hash("sha256", json_encode([$token, $data['salt'], $clientData['secret']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 		
 		//Return it
 		return new Response(200, ['token'=>$token, 'signature'=>$signature]);
@@ -1105,7 +1105,7 @@ class Response {
 		//Json
 		if (is_array($this->data) || is_bool($this->data)){
 		 header('Content-Type: application/json');
-		 print json_encode($this->data, JSON_UNESCAPED_SLASHES);
+		 print json_encode($this->data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		 
 		//Plain text
 		} else {

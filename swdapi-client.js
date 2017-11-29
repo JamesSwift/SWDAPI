@@ -24,8 +24,8 @@ swdapi.client = swdapi.client || function(URI, config) {
 	if (typeof XMLHttpRequest === "undefined") {
 		throw "SWDAPI: Required component 'XMLHttpRequest' not defined.";
 	}
-	if (typeof forge_sha256 === "undefined") {
-		throw "SWDAPI: Required component 'forge_sha256' not defined. Did you forget to include it?";
+	if (typeof jsSHA === "undefined") {
+		throw "SWDAPI: Required component 'jsSHA' not defined. Did you forget to include it?";
 	}	
 	Number.isInteger = Number.isInteger || function(value) {
 	    return typeof value === "number" &&
@@ -185,7 +185,10 @@ swdapi.client = swdapi.client || function(URI, config) {
 		}
 		
 		//Join the dots and hash
-		keyEnc = forge_sha256(text + keyPlain);
+
+		var shaObj = new jsSHA("SHA-256", "TEXT");
+		shaObj.update(text + keyPlain);
+		keyEnc = shaObj.getHash("HEX");
 
 		return keyEnc;
 	}
@@ -333,8 +336,12 @@ swdapi.client = swdapi.client || function(URI, config) {
 			"requestPermissions":requestPermissions,
 			"requestExpiry":requestExpiry,
 			"requestTimeout":requestTimeout,
-			"salt":salt,
-			"signature":forge_sha256(JSON.stringify([
+			"salt":salt
+		};
+		
+		//Sign it
+		var sha = new jsSHA("SHA-256", "TEXT");
+		sha.update(JSON.stringify([
 					user,
 					pass,
 					requestPermissions,
@@ -343,18 +350,20 @@ swdapi.client = swdapi.client || function(URI, config) {
 					salt,
 					clientData.id,
 					clientData.secret
-					]))
-		};
+		]));
+		data.signature = sha.getHash("HEX");
 		
 		//define Successful request
 		successHandler = function(response){
 			
 			//Recreate response signature
-			var ourSig = forge_sha256(JSON.stringify([
+			var sha = new jsSHA("SHA-256", "TEXT");
+			sha.update(JSON.stringify([
 					response.token,
 					salt,
 					clientData.secret
-					]));
+			]));
+			var ourSig = sha.getHash("HEX");
 					
 			//Check the signature matches (i.e., no man in the middle)
 			if (ourSig!==response.signature){
@@ -489,7 +498,9 @@ swdapi.client = swdapi.client || function(URI, config) {
 
 		//Hash/sign the id and secret (if known)
 		if (typeof currentData === "object" && currentData.id !== undefined && currentData.secret !== undefined) {
-			sendData.signature = forge_sha256("swdapi" + currentData.id + currentData.secret);
+			var sha = new jsSHA("SHA-256", "TEXT");
+			sha.update("swdapi" + currentData.id + currentData.secret);
+			sendData.signature = sha.getHash("HEX");
 		}
 
 		//check whether to use new name or old (if it exists)
@@ -531,7 +542,11 @@ swdapi.client = swdapi.client || function(URI, config) {
 			if (currentData.id !== undefined && currentData.secret !== undefined) {
 				//Don't forget to store the current secret again
 				newClientData.secret = currentData.secret;
-				ourSig = forge_sha256("swdapi" + sendData.salt + sendData.id + currentData.secret);
+				
+				var sha = new jsSHA("SHA-256", "TEXT");
+				sha.update("swdapi" + sendData.salt + sendData.id + currentData.secret);
+				ourSig = sha.getHash("HEX");
+				
 				if (responseData.signature === undefined || ourSig !== responseData.signature) {
 					throw "Failed to confirm the client id. " +
 						"The signature returned by the server doesn't match ours. " +

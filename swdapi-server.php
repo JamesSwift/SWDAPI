@@ -684,7 +684,6 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Hash the text
-		print hash("sha256","¥");exit;
 		$keyEnc = hash("sha256", $text.$keyPlain);
 
 		if ($oldKey!==$keyEnc){

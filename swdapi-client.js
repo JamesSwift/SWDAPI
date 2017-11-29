@@ -199,7 +199,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		getAuthToken(user, pass, function(token) {
 
 			//If login successfull, store the token for future use
-			if (typeof token == "object") {
+			if (token !== null && typeof token == "object" && "type" in token && token.type === "SWDAPI-AuthToken") {
 				defaultToken = setDefaultToken(token);
 			}
 
@@ -416,8 +416,14 @@ swdapi.client = swdapi.client || function(URI, config) {
 	function checkTokenFormat(token) {
 
 		//First, is there something to test?
-		if (token===undefined || typeof token !== "object"){
+		if (token===undefined || token === null || typeof token !== "object"){
 			console.log("Invalid token: must be object");
+			return false;
+		}
+		
+		//Check for type string
+		if (!("type" in token) || typeof token.type !== "string" || token.type !== "SWDAPI-AuthToken"){
+			console.log("Invalid token: Doesn't contain valid type definition.");
 			return false;
 		}
 		

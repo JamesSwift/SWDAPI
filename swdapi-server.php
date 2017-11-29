@@ -719,6 +719,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$tokenID = (int)$this->DB->lastInsertId();
 		
 		//Build full token data and return it
+		$token['type'] = "SWDAPI-AuthToken";
 		$token['id']=$tokenID;
 		unset($token['lastUsed']);
 		$token['permissions']=$permissions;
@@ -729,7 +730,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected function _fetchAuthToken($tokenID, $userID, $updateLastUsed=true){
 		
-		//Make sure qe are connected to DB
+		//Make sure we are connected to DB
 		$this->connectDB();
 
 		//Attempt to fetch row
@@ -1004,7 +1005,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			$data['salt'],
 			$data['clientID'],
 			$clientData['secret']
-		]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) );
 		
 		//Compare the signature to our signature
 		if ($newSig!==$data['signature']){

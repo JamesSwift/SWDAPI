@@ -410,6 +410,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		defaultFor(token, defaultToken);
 		
 		if (!checkTokenFormat(token)){
+			callback(false);
 			return false;
 		}
 		
@@ -419,7 +420,8 @@ swdapi.client = swdapi.client || function(URI, config) {
 			},
 			function(error){
 				callback(error);
-			}, token);
+			}, token
+		);
 	}
 
 	function checkTokenFormat(token) {

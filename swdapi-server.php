@@ -44,13 +44,13 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$newConfig=[];
 
 		//Sanitize settings (if defined)
-		if (is_array($config['settings']) && sizeof($config['settings'])>0){
+		if (isset($config['settings']) && is_array($config['settings']) && sizeof($config['settings'])>0){
 			$newConfig['settings'] = $this->_sanitizeSettings($config['settings']);
 		}
 		
 		
 		//Sanitize methods (if defined)
-		if (is_array($config['methods']) && sizeof($config['methods'])>0){
+		if (isset($config['methods']) && is_array($config['methods']) && sizeof($config['methods'])>0){
 			$newConfig['methods'] = $this->_sanitizeMethods($config['methods']);
 		}
 

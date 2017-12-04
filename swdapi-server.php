@@ -447,12 +447,11 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			$data = null;
 		}
 	
-		//Enforce meta
+		//Enforce general meta
 		$metaCheck = $this->_checkMeta($meta);
 		if ($metaCheck!==true){
 			return $metaCheck;
 		}
-		
 		
 		//Check signature (including token authentication)
 		$sigCheck = $this->_checkSignature($method, $meta, $data);
@@ -460,11 +459,18 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			return $sigCheck;
 		}
 		
+		//Find permissions
+		$permissions = null;
+		if (isset($meta['token'])){
+			$token = $this->_fetchAuthToken($meta['token']['id'], $meta['token']['uid']);
+			$permissions = $token['permissions'];
+		}
+		
 		
 		//Handle auth
 		$auth=null;
-		if (isset($meta['token']['uid']) &&  is_string($meta['token']['uid'])){
-			$auth = ['authorizedUser'=> new \JamesSwift\SWDAPI\Credential($meta['token']['uid'], $meta['token']['permissions'])];
+		if (isset($meta['token']['uid']) && is_string($meta['token']['uid'])){
+			$auth = ['authorizedUser'=> new \JamesSwift\SWDAPI\Credential($meta['token']['uid'], $permissions)];
 		}
 		
 		//Make request
@@ -628,7 +634,14 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Add authentication token if sent
-		if (isset($meta['token']['id']) && is_int($meta['token']['id']) && isset($meta['token']['uid']) && is_string($meta['token']['uid'])){
+		if (isset($meta['token'])){
+			
+			if (!isset($meta['token']['id']) || !is_int($meta['token']['id']) || !isset($meta['token']['uid']) || !is_string($meta['token']['uid'])){
+				return new Response(403, ["SWDAPI-Error"=>[
+					"code"=>403015,
+					"message"=>"The meta.token you specified is an invalid format."
+				]]);				
+			}
 			
 			try {
 				//Fetch token
@@ -665,10 +678,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 						"message"=>"The meta.token you specified has timed-out.".time()
 					]]);
 				}
-				
-				//Send the token back via &reference
-				$returnToken = $token;
-				
+
 				//Add it to the hash
 				$keyPlain.=$tokenData['id'].$tokenData['secret'];
 				

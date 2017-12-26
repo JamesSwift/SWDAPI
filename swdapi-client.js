@@ -186,9 +186,10 @@ swdapi.client = swdapi.client || function(URI, config) {
 		
 		//Join the dots and hash
 
-		var shaObj = new jsSHA("SHA-256", "TEXT");
-		shaObj.update(text + keyPlain);
-		keyEnc = shaObj.getHash("HEX");
+		var sha = new jsSHA("SHA-256", "TEXT");
+		sha.setHMACKey(keyPlain, "TEXT");
+		sha.update(text);
+		keyEnc = sha.getHMAC("HEX");
 
 		return keyEnc;
 	}
@@ -341,6 +342,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		
 		//Sign it
 		var sha = new jsSHA("SHA-256", "TEXT");
+		sha.setHMACKey(clientData.secret, "TEXT");
 		sha.update(JSON.stringify([
 					user,
 					pass,
@@ -349,21 +351,20 @@ swdapi.client = swdapi.client || function(URI, config) {
 					requestTimeout,
 					salt,
 					clientData.id,
-					clientData.secret
 		]));
-		data.signature = sha.getHash("HEX");
+		data.signature = sha.getHMAC("HEX");
 		
 		//define Successful request
 		successHandler = function(response){
 			
 			//Recreate response signature
 			var sha = new jsSHA("SHA-256", "TEXT");
+			sha.setHMACKey(clientData.secret, "TEXT");
 			sha.update(JSON.stringify([
 					response.token,
-					salt,
-					clientData.secret
+					salt
 			]));
-			var ourSig = sha.getHash("HEX");
+			var ourSig = sha.getHMAC("HEX");
 					
 			//Check the signature matches (i.e., no man in the middle)
 			if (ourSig!==response.signature){
@@ -501,8 +502,9 @@ swdapi.client = swdapi.client || function(URI, config) {
 		//Hash/sign the id and secret (if known)
 		if (typeof currentData === "object" && currentData.id !== undefined && currentData.secret !== undefined) {
 			var sha = new jsSHA("SHA-256", "TEXT");
-			sha.update("swdapi" + currentData.id + currentData.secret);
-			sendData.signature = sha.getHash("HEX");
+			sha.setHMACKey(currentData.secret, "TEXT");
+			sha.update("swdapi" + currentData.id);
+			sendData.signature = sha.getHMAC("HEX");
 		}
 
 		//check whether to use new name or old (if it exists)
@@ -546,8 +548,9 @@ swdapi.client = swdapi.client || function(URI, config) {
 				newClientData.secret = currentData.secret;
 				
 				var sha = new jsSHA("SHA-256", "TEXT");
-				sha.update("swdapi" + sendData.salt + sendData.id + currentData.secret);
-				ourSig = sha.getHash("HEX");
+				sha.setHMACKey(currentData.secret, "TEXT");
+				sha.update("swdapi" + sendData.salt + sendData.id);
+				ourSig = sha.getHMAC("HEX");
 				
 				if (responseData.signature === undefined || ourSig !== responseData.signature) {
 					throw "Failed to confirm the client id. " +

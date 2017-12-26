@@ -694,7 +694,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Hash the text
-		$keyEnc = hash("sha256", $text.$keyPlain);
+		$keyEnc = hash_hmac("sha256", $text, $keyPlain);
 
 		if ($oldKey!==$keyEnc){
 			return new Response(400, ["SWDAPI-Error"=>[
@@ -815,7 +815,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				if (isset($data['signature'])){
 					
 					//Recreate the signature and compare it
-					if (hash("sha256", "swdapi".$clientData['id'].$clientData['secret'])===$data['signature']){
+					if (hash_hmac("sha256", "swdapi".$clientData['id'], $clientData['secret'])===$data['signature']){
 
 						//The signature matches, so they must have the secret too
 						$action = "log-name";
@@ -857,7 +857,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				//Create response
 				$response['name'] = $name;
 				$response['id'] = $clientData['id'];
-				$response['signature'] = hash("sha256", "swdapi".$data['salt'].$clientData['id'].$clientData['secret']);
+				$response['signature'] = hash_hmac("sha256", "swdapi".$data['salt'].$clientData['id'], $clientData['secret']);
 				
 			} catch (\Exception $e){
 				return new Response(500, ["SWDAPI-Error"=>[
@@ -887,7 +887,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 				$response['secret'] = $secret;
 				
 				//Create signature
-				$response['signature'] = hash("sha256", "swdapi".$data['salt'].$clientData['id'].$clientData['secret']);
+				$response['signature'] = hash_hmac("sha256", "swdapi".$data['salt'].$clientData['id'], $clientData['secret']);
 				
 			 } catch (\Exception $e){
 				return new Response(500, ["SWDAPI-Error"=>[
@@ -1006,16 +1006,15 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Reconstruct the signature
-		$newSig = hash("sha256", json_encode([
+		$newSig = hash_hmac("sha256", json_encode([
 			$data['user'],
 			$data['pass'],
 			$data['requestPermissions'],
 			$data['requestExpiry'],
 			$data['requestTimeout'],
 			$data['salt'],
-			$data['clientID'],
-			$clientData['secret']
-		], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) );
+			$data['clientID']
+		], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $clientData['secret']);
 		
 		//Compare the signature to our signature
 		if ($newSig!==$data['signature']){
@@ -1050,7 +1049,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 		//Create a singature of it
-		$signature = hash("sha256", json_encode([$token, $data['salt'], $clientData['secret']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+		$signature = hash_hmac("sha256", json_encode([$token, $data['salt']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), $clientData['secret']);
 		
 		//Return it
 		return new Response(200, ['token'=>$token, 'signature'=>$signature]);

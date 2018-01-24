@@ -1030,7 +1030,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		if ($credentialResult===false || !is_a($credentialResult, "\JamesSwift\SWDAPI\Credential") || is_string($credentialResult)->id){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,
-				"message"=>"Forbidden: The user or password you specified is wrong."
+				"message"=>"The account or password you specified was incorrect. Please try again."
 			]]);			
 		}
 		

@@ -48,7 +48,12 @@ swdapi.client = swdapi.client || function(URI, config) {
 		serverTimeOffset = 0,
 		defaultToken = null,
 		defaultClientName,
-		listeners = {"defaultToken": []},
+		listeners = {
+			"defaultToken": {
+				callbacks: [],
+				state: null
+			}
+		},
 		autoReregister = (typeof config['autoReregister'] === "boolean" ? config['autoReregister'] : true),
 		fetchClientData = (typeof config['fetchClientData'] === "function" ? config['fetchClientData'] : fetchClientData_Default),
 		storeClientData = (typeof config['storeClientData'] === "function" ? config['storeClientData'] : storeClientData_Default),
@@ -834,11 +839,16 @@ swdapi.client = swdapi.client || function(URI, config) {
 			throw "addListener: Callback isn't a function";
 		}
 		
-		if (listeners[event].indexOf(callback)!==-1){
+		if (listeners[event].callbacks.indexOf(callback)!==-1){
 			return true;
 		}
 		
-		listeners[event].push(callback);
+		listeners[event].callbacks.push(callback);
+		
+		//If there is data set, tell the callback right away
+		if (typeof listeners[event].state !== "undefined" && listeners[event].state !== null){
+			callback(listeners[event].state);
+		}
 		
 		return true;
 		
@@ -851,12 +861,12 @@ swdapi.client = swdapi.client || function(URI, config) {
 		}
 		
 		//Does the callback exist?
-		if (listeners[event].indexOf(callback) === -1){
+		if (listeners[event].callbacks.indexOf(callback) === -1){
 			return false;
 		}
 		
 		//Remove the listener
-		listeners[event].splice(listeners[event].indexOf(callback), 1);
+		listeners[event].callbacks.splice(listeners[event].callbacks.indexOf(callback), 1);
 		
 		return true;
 	}
@@ -867,9 +877,11 @@ swdapi.client = swdapi.client || function(URI, config) {
 			return false;
 		}
 		
-		for (var prop in listeners[event]) {
-			if (listeners[event].hasOwnProperty(prop) && typeof listeners[event][prop] === "function"){
-				listeners[event][prop](response);
+		listeners[event].state = response;
+		
+		for (var prop in listeners[event].callbacks) {
+			if (listeners[event].callbacks.hasOwnProperty(prop) && typeof listeners[event].callbacks[prop] === "function"){
+				listeners[event].callbacks[prop](response);
 			}
 		}
 		

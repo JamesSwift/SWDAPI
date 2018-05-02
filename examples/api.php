@@ -9,10 +9,10 @@ $API = new \JamesSwift\SWDAPI\Server("exampleConfig.json");
 //Optionally define a function to verify user-pass login requests
 //
 // If the $user and $pass that are passed in are correct, the function
-// should return aan instance of \JamesSwift\SWDAPI\Credential(ID, PERMISSIONS)
+// should return an instance of \JamesSwift\SWDAPI\Credential(ID, [PERMISSIONS, [ATTACHDATA] ] )
 //
-// This returned data will be stored and supplied to to called methods as
-// part of the array in the second parameter: 'authorizedUser'
+// This id and permissions will be stored and supplied to to called methods as
+// part of the second parameter: 'authorizedUser'
 //
 // If the credentials don't match, the function should return false
 //
@@ -30,6 +30,13 @@ $API->registerCredentialVerifier(function($user, $pass, $requestedPermissions, $
     if ($user==="test" && $pass==="password"){
         return new \JamesSwift\SWDAPI\Credential(123);
     }    
+    
+    //You can return some data with the token
+    //This data is not stored server side, but is returned to the client
+    if ($user==="data" && $pass==="password"){
+        return new \JamesSwift\SWDAPI\Credential(123, null, ["somedata"=>true]);
+    }  
+    
     
     //Didn't match
     return false;

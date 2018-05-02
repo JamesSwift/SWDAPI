@@ -707,7 +707,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 	}
 	
-	protected function _createAuthToken($userID, $clientID, $permissions, $expires, $timeout){
+	protected function _createAuthToken($userID, $clientID, $permissions, $expires, $timeout, $attachData = null){
 		
 		//Make sure qe are connected to DB
 		$this->connectDB();
@@ -733,6 +733,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$token['id']=$tokenID;
 		unset($token['lastUsed']);
 		$token['permissions']=$permissions;
+		$token['data'] = $attachData;
 		
 		return $token;
 			
@@ -1037,7 +1038,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Register a token (secret and id)
 		try {
 			
-			$token = $this->_createAuthToken($credentialResult->id, $clientData['id'], $credentialResult->permissions, $expiry, $timeout);
+			$token = $this->_createAuthToken($credentialResult->id, $clientData['id'], $credentialResult->permissions, $expiry, $timeout, $credentialResult->attachData);
 	
 		} catch (\Exception $e){
 			
@@ -1129,10 +1130,12 @@ class Credential {
 	
 	public $id;
 	public $permissions = null;
+	public $attachData = null;
 	
-	public function __construct($id, $permissions=null) {
+	public function __construct($id, $permissions=null, $attachData=null) {
 		$this->id = (string)$id;
 		$this->permissions = $permissions;
+		$this->attachData = $attachData;
 	}
 	 
 }

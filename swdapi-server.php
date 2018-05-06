@@ -455,22 +455,28 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		
 		//Check signature (including token authentication)
 		$sigCheck = $this->_checkSignature($method, $meta, $data);
-		if ($sigCheck!==true){
+		if ($sigCheck instanceof Response){
 			return $sigCheck;
 		}
 		
-		//Find permissions
-		$permissions = null;
-		if (isset($meta['token'])){
-			$token = $this->_fetchAuthToken($meta['token']['id'], $meta['token']['uid']);
-			$permissions = $token['permissions'];
+		//Handle authInfo
+		$auth=[];
+		
+		//User token
+		if (isset($sigCheck['token']) && $sigCheck['token']!==null){
+		
+			$auth['token'] = $sigCheck['token'];
+			unset($auth['token']['secret']);
+			$auth['authorizedUser'] = new \JamesSwift\SWDAPI\Credential($auth['token']['uid'], $auth['token']['permissions']);
+			
 		}
 		
+		//Client info
+		if (isset($sigCheck['client']) && $sigCheck['client']!==null){
 		
-		//Handle auth
-		$auth=null;
-		if (isset($meta['token']['uid']) && is_string($meta['token']['uid'])){
-			$auth = ['authorizedUser'=> new \JamesSwift\SWDAPI\Credential($meta['token']['uid'], $permissions)];
+			$auth['client'] = $sigCheck['client'];
+			unset($auth['client']['secret']);
+		
 		}
 		
 		//Make request
@@ -607,6 +613,9 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 	
 	protected function _checkSignature($method, $meta, $data){
 		
+		$clientData = null;
+		$tokenData = null;
+		
 		$oldKey = $meta['signature'];
 		unset($meta['signature']);
 		
@@ -703,7 +712,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			]]);
 		}
 		
-		return true;
+		return [
+			"client"=> $clientData,
+			"token"=> $tokenData
+		];
 		
 	}
 	
@@ -751,6 +763,8 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		$row = $q->fetch(\PDO::FETCH_ASSOC);
 		
 		if (is_array($row)){
+			
+			$row['permissions'] = json_decode($row['permissions'], true);
 			
 			//Update the lastUsed?
 			if ($updateLastUsed===true){

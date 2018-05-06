@@ -949,7 +949,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Check requestExpiry is valid
 		if (isset($data['requestExpiry']) && $data['requestExpiry']!==null){
 			$expiry = $data['requestExpiry'];
-			if (!is_int($data['requestExpiry']) || $data['requestExpiry']<time()+30 || $data['requestExpiry']<$maxExpiry){
+			if (!is_int($data['requestExpiry']) || $data['requestExpiry']<time()+30 || $data['requestExpiry']>$maxExpiry){
 				return new Response(400, ["SWDAPI-Error"=>[
 					"code"=>400020,
 					"message"=>"Bad request: requestExpiry is not defined or is invalid. It must be an timestamp between 30 seconds from now and ".$maxExpiry
@@ -962,7 +962,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Check requestTimeout was set and is valid
 		if (isset($data['requestTimeout']) && $data['requestTimeout']!==null){
 			$timeout = $data['requestTimeout'];
-			if (!is_int($data['requestTimeout']) || $data['requestTimeout']<5 || $data['requestTimeout']<$maxTimeout){
+			if (!is_int($data['requestTimeout']) || $data['requestTimeout']<5 || $data['requestTimeout']>$maxTimeout){
 				return new Response(400, ["SWDAPI-Error"=>[
 					"code"=>400021,
 					"message"=>"Bad request: requestTimeout is not defined or is invalid. It must be an integar between 5 and ".$maxTimeout

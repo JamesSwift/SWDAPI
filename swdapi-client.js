@@ -315,7 +315,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		
 		//Validate exipry if specified
 		if (requestExpiry!==null && (
-				!(typeof requestExpiry === "number" && (requestExpiry % 1)===0) || requestExpiry<=getServerDate().getTime()
+				!(typeof requestExpiry === "number" && (requestExpiry % 1)===0) || requestExpiry<=(getServerDate().getTime()/1000)
 			 )
 		){
 			throw "The expiry you requested for your user session is not a number or is in the past.";

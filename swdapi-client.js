@@ -322,7 +322,7 @@ swdapi.client = swdapi.client || function(URI, config) {
 		}
 		
 		//Validate timeout if specified
-		if (requestTimeout!==null && ( !(typeof requestExpiry === "number" && (requestExpiry % 1)===0) || requestTimeout<=1)){
+		if (requestTimeout!==null && ( !(typeof requestTimeout === "number" && (requestTimeout % 1)===0) || requestTimeout<=1)){
 			throw "The requestTimeout you requested for your user session is not a number or is less than one.";
 		}		
 		

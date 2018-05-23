@@ -583,7 +583,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			
 		} catch (\PDOException $e){
 			//If the error is a duplicate key constraint violation return false 
-			if ($e->getCode() == 1062) {
+			if ($e->getCode() == 1062 || $e->errorInfo[1] === 1062) {
 		        return false;
 		        
 		    //If some other error, throw it again

@@ -131,7 +131,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Does this method require an authorized user?
 		if (isset($method['requireAuthorizedUser']) && $method['requireAuthorizedUser']===true){
 			
-			if (!isset($authInfo['authorizedUser']) || !is_a($authInfo['authorizedUser'], "\JamesSwift\SWDAPI\Credential") && !is_string($authInfo['authorizedUser']->id) ){
+			if (!isset($authInfo['authorizedUser']) || !is_a($authInfo['authorizedUser'], "\JamesSwift\SWDAPI\Credential") || !is_string($authInfo['authorizedUser']->id) ){
 				return new Response(403, ["SWDAPI-Error"=>[
 					"code"=>403001,
 					"message"=>"The method you requested requires authentication."

@@ -1047,7 +1047,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Check credentials
 		$credentialResult = call_user_func($this->_credentialVerifier, $data['user'], $data['pass'], $data['requestPermissions'], $clientData);
 		
-		if ($credentialResult===false || !is_a($credentialResult, "\JamesSwift\SWDAPI\Credential") || is_string($credentialResult->id)){
+		if ($credentialResult===false || !is_a($credentialResult, "\JamesSwift\SWDAPI\Credential") || !is_string($credentialResult->id)){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,
 				"message"=>"The account or password you specified was incorrect. Please try again."

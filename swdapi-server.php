@@ -31,6 +31,10 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			"call"=>[$this, "_pdm__invalidateAuthToken"],
 			"requireAuthorizedUser" => true
 		],
+		"swdapi/invalidateAllAuthTokens"=> [
+			"call"=>[$this, "_pdm__invalidateAllAuthTokens"],
+			"requireAuthorizedUser" => true
+		],
 		"swdapi/validateAuthToken"=> [
 			"call"=>[$this, "_pdm__validateAuthToken"],
 			"requireAuthorizedUser" => true
@@ -280,7 +284,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 			return true;
 		
 		//Loop through array of methods and register	
-		} else if (is_array($id) && sizeof($methods)>0){
+		} else if (is_array($id) && sizeof($id)>0){
 			
 			foreach($id as $mid=>$method){
 				$method = $this->_sanitizeMethod($mid, $method);
@@ -1043,7 +1047,7 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		//Check credentials
 		$credentialResult = call_user_func($this->_credentialVerifier, $data['user'], $data['pass'], $data['requestPermissions'], $clientData);
 		
-		if ($credentialResult===false || !is_a($credentialResult, "\JamesSwift\SWDAPI\Credential") || is_string($credentialResult)->id){
+		if ($credentialResult===false || !is_a($credentialResult, "\JamesSwift\SWDAPI\Credential") || is_string($credentialResult->id)){
 			return new Response(403, ["SWDAPI-Error"=>[
 				"code"=>403007,
 				"message"=>"The account or password you specified was incorrect. Please try again."
@@ -1109,6 +1113,55 @@ class Server extends \JamesSwift\PHPBootstrap\PHPBootstrap {
 		}
 		
 	}
+
+	//Invalidate all tokens associated with this account [except specified ID] (useful for when a user changes their password)
+	protected function _pdm__invalidateAllAuthTokens($data, $authInfo){
+				
+		//Make sure we are connected to DB
+		$this->connectDB();
+
+		//Check if id was specified and is valid
+		if (isset($data['id']) && !is_int($data['id'])){
+			return new Response(400, ["SWDAPI-Error"=>[
+				"code"=>400023,
+				"message"=>"Bad request: The 'id' of the token must be an int."
+			]]);
+		}
+
+		//Attempt to fetch token (to make sure we have access)
+		if (isset($data['id'])){
+			try {
+				$tokenData = $this->_fetchAuthToken($data['id'], $authInfo['authorizedUser']->id);		
+			} catch(\Exception $e){
+				return new Response(403, ["SWDAPI-Error"=>[
+					"code"=>403016,
+					"message"=>"Access denied: The token you aksed to retain could not be found, or you don't have access to it."
+				]]);
+			}
+		}
+			
+		//Attempt to delete tokens
+		try {
+
+			if (isset($data['id'])){
+				$q = $this->DB->prepare("DELETE FROM tokens WHERE uid = :userID AND id != :tokenID");
+				$q->execute(["userID" => $authInfo['authorizedUser']->id, "tokenID" => $data['id'] ]);
+			} else {
+				$q = $this->DB->prepare("DELETE FROM tokens WHERE uid = :userID");
+				$q->execute(["userID" => $authInfo['authorizedUser']->id]);
+			}
+					
+			return new Response(200, true);
+			
+		} catch(\Exception $e){
+			return new Response(500, ["SWDAPI-Error"=>[
+				"code"=>500008,
+				"message"=>"Server Error: An error occured while invalidating all your tokens."
+			]]);
+		}
+		
+		
+	}	
 	
 	protected function _pdm__validateAuthToken($data, $authInfo){
 		return new Response(200, true);

@@ -229,12 +229,12 @@ swdapi.client = swdapi.client || function(URI, config) {
 		
 		//Handle response
 		handler = function(response) {
+			defaultToken = setDefaultToken(null);
 			if (response === true) {
 				console.log("Logout completed");
-				defaultToken = setDefaultToken(null);
 			}
 			else {
-				console.log("Logout failed.");
+				console.log("Logout possibly failed.");
 			}
 			if (typeof callback === "function") {
 				callback(response);
